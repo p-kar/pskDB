@@ -14,6 +14,7 @@ type Logger struct{
 }
 
 func NewLogger(
+    name string,
     traceHandle io.Writer, 
     infoHandle io.Writer, 
     warningHandle io.Writer, 
@@ -22,23 +23,23 @@ func NewLogger(
     l := new(Logger)
 
     l.Trace = log.New(traceHandle,
-        "[  TRACE  ]: ",
+        name + "[  TRACE  ]: ",
         log.Ldate|log.Ltime|log.Lshortfile)
 
     l.Info = log.New(infoHandle,
-        "[  INFO   ]: ",
+        name + "[  INFO   ]: ",
         log.Ldate|log.Ltime|log.Lshortfile)
 
     l.Warning = log.New(warningHandle,
-        "[ WARNING ]: ",
+        name + "[ WARNING ]: ",
         log.Ldate|log.Ltime|log.Lshortfile)
 
     l.Error = log.New(errorHandle,
-        "[  ERROR  ]: ",
+        name + "[  ERROR  ]: ",
         log.Ldate|log.Ltime|log.Lshortfile)
 
     l.Panic = log.New(errorHandle,
-        "[  PANIC  ]: ",
+        name + "[  PANIC  ]: ",
         log.Ldate|log.Ltime|log.Lshortfile)
 
     return l

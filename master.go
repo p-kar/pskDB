@@ -11,7 +11,7 @@ import (
 
 func main() {
     scanner := bufio.NewScanner(os.Stdin)
-    log := logger.NewLogger(os.Stdout, os.Stdout, 
+    log := logger.NewLogger("[  MASTER  ] ", os.Stdout, os.Stdout, 
         os.Stdout, os.Stderr, os.Stderr)
     // map from node(server) id to its port number
     serverNodeMap := make(map[string]int)
@@ -41,7 +41,7 @@ func main() {
                 nodeId := commandSplit[1]
                 args := []string{}
                 args = append(args, nodeId, strconv.Itoa(serverNextPort))
-                for id, port := range serverNodeMap {
+                for _, port := range serverNodeMap {
                     args = append(args, strconv.Itoa(port))
                 }
                 serverNodeMap[nodeId] = serverNextPort
