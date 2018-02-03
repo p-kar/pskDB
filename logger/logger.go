@@ -3,6 +3,8 @@ package logger
 import (
     "io"
     "log"
+    "strings"
+    "github.com/fatih/color"
 )
 
 type Logger struct{
@@ -22,6 +24,12 @@ func NewLogger(
     panicHandle io.Writer) *Logger{
     l := new(Logger)
 
+    if strings.Contains(name, "SERVER") {
+        name = color.BlueString(name)
+    }else if strings.Contains(name, "CLIENT") {
+        name = color.CyanString(name)
+    }
+
     l.Trace = log.New(traceHandle,
         name + "[  TRACE  ]: ",
         log.Ldate|log.Ltime|log.Lshortfile)
@@ -31,15 +39,15 @@ func NewLogger(
         log.Ldate|log.Ltime|log.Lshortfile)
 
     l.Warning = log.New(warningHandle,
-        name + "[ WARNING ]: ",
+        name + color.RedString("[ WARNING ]: "),
         log.Ldate|log.Ltime|log.Lshortfile)
 
     l.Error = log.New(errorHandle,
-        name + "[  ERROR  ]: ",
+        name + color.RedString("[  ERROR  ]: "),
         log.Ldate|log.Ltime|log.Lshortfile)
 
     l.Panic = log.New(errorHandle,
-        name + "[  PANIC  ]: ",
+        name + color.RedString("[  PANIC  ]: "),
         log.Ldate|log.Ltime|log.Lshortfile)
 
     return l

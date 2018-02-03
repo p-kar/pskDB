@@ -17,7 +17,7 @@ type ServerInfo struct {
     // port number of the server
     Port_num string
     // latest heartbeat sequence number that has been received from this server
-    Heartbeat_seqnum int
+    Heartbeat_seqnum int64
     // timestamp according to the local clock when the last sequence number
     // from this server was received
     Timestamp time.Time

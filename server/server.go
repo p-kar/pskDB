@@ -18,7 +18,6 @@ import (
 // need to check when sequence number is updated
 var currServerInfo ServerInfo
 // global map that maintains info about all alive servers
-// [TODO] need to make accesses to this thread safe (mutually exclusive)
 var serverMap = make(map[string] *ServerInfo)
 // mutex for serverMap
 // [TODO] make this a RWMutex to allow concurrent reads
@@ -71,7 +70,6 @@ func (sl *ServerListener) JoinClusterAsServer(req *JoinClusterAsServerRequest,
     new_server_info.Alive = true
     new_server_info.Suspicion = false
 
-    // [TODO] send new server notifications to all existing servers
     for _,serv_info := range serverMap {
         client := getRPCConnection(serv_info.Address)
         if client == nil {
@@ -155,7 +153,6 @@ func (sl *ServerListener) HeartbeatNotification(
 }
 
 func startHeartbeats() {
-    counter := 0
     for {
         // increment heartbeat sequence number
         currServerInfo.Heartbeat_seqnum++
@@ -214,19 +211,8 @@ func startHeartbeats() {
             }
             kidx++
         }
-        // if counter % 5 == 0 {
-        //     fmt.Printf("\n\n -------------- SERVER %s --------------\n", currServerInfo.Id)
-        //     for _,serv_info := range serverMap {
-        //         if serv_info.Alive {
-        //             fmt.Printf("%s\t%s\t%d\t[  ALIVE  ]\n", serv_info.Id, serv_info.Address, serv_info.Heartbeat_seqnum)
-        //         } else if serv_info.Suspicion {
-        //             fmt.Printf("%s\t%s\t%d\t[ SUSPECT ]\n", serv_info.Id, serv_info.Address, serv_info.Heartbeat_seqnum)
-        //         }
-        //     }
-        // }
         mutex_server_map.Unlock()
         time.Sleep(HEARTBEAT_TIME_INTERVAL * time.Millisecond)
-        counter++
     }
 }
 
