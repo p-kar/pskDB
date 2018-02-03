@@ -1,41 +1,51 @@
 package main
 
 import (
-    "fmt"
     "bufio"
     "os"
     "strings"
     "os/exec"
-    "log"
     "strconv"
+    "./logger"
 )
 
 func main() {
     scanner := bufio.NewScanner(os.Stdin)
-
-    nodeMap := make(map[string]int) // map from node(server or client) id to its port number
-                                    // nodeId is a string
-    nextPort := 9000   // Starting value of the port numbers used by nodes
+    log := logger.NewLogger(os.Stdout, os.Stdout, 
+        os.Stdout, os.Stderr, os.Stderr)
+    // map from node(server) id to its port number
+    serverNodeMap := make(map[string]int)
+    // Starting value of the port numbers used by servers
+    serverNextPort := 9000
+    // map from node(client) id to its port number
+    // clientNodeMap := make(map[string]int)
+    // Starting value of the port numbers used by clients
+    // clientNextPort := 10000
 
     for scanner.Scan(){
         // read and process the command from stdin
         command := scanner.Text()
         commandSplit := strings.Split(command, " ")
 
+        if (commandSplit[0] == "done") {
+            log.Info.Println("Goodbye.")
+            break
+        }
+
         switch commandSplit[0] {
             case "joinServer":
-                log.Println("Executing...", commandSplit)
+                log.Info.Println("Executing...", commandSplit)
                 
                 // Create startup info i.e., arguments
-                // example arguments ["1" "9001" "0" "9004" "2" "9003"]
+                // example arguments ["1" "9001" "9004" "9003"]
                 nodeId := commandSplit[1]
                 args := []string{}
-                args = append(args, nodeId, strconv.Itoa(nextPort))
-                for id, port := range nodeMap {
-                    args = append(args, id, strconv.Itoa(port))
+                args = append(args, nodeId, strconv.Itoa(serverNextPort))
+                for id, port := range serverNodeMap {
+                    args = append(args, strconv.Itoa(port))
                 }
-                nodeMap[nodeId] = nextPort
-                nextPort++
+                serverNodeMap[nodeId] = serverNextPort
+                serverNextPort++
 
                 // spawn the server
                 joinCmd := exec.Command("./serverNode", args...)
@@ -43,29 +53,32 @@ func main() {
                 joinCmd.Stderr = os.Stderr
                 err := joinCmd.Start()
                 if err != nil {
-                    fmt.Println(err)
+                    log.Panic.Panicln(err)
                 }
-                log.Println("Started server with process id", joinCmd.Process.Pid)
+                log.Info.Println("Started server with process id", joinCmd.Process.Pid)
                 go joinCmd.Wait()
             case "killServer":
-                fmt.Println("TODO ", commandSplit)
+                log.Info.Println("TODO ", commandSplit)
             case "joinClient":
-                fmt.Println("TODO ", commandSplit)
+                log.Info.Println("TODO ", commandSplit)
             case "breakConnection":
-                fmt.Println("TODO ", commandSplit)
+                log.Info.Println("TODO ", commandSplit)
             case "createConnection":
-                fmt.Println("TODO ", commandSplit)
+                log.Info.Println("TODO ", commandSplit)
             case "stabilize":
-                fmt.Println("TODO ", commandSplit)
+                log.Info.Println("TODO ", commandSplit)
             case "printStore":
-                fmt.Println("TODO ", commandSplit)
+                log.Info.Println("TODO ", commandSplit)
             case "put":
-                fmt.Println("TODO ", commandSplit)
+                log.Info.Println("TODO ", commandSplit)
             case "get":
-                fmt.Println("TODO ", commandSplit)
+                log.Info.Println("TODO ", commandSplit)
+            default:
+                log.Warning.Println("Command", commandSplit, "not recognized")
+                break
         }
     }
     if err := scanner.Err(); err != nil {
-        fmt.Fprintln(os.Stderr, "reading standard input:", err)
+        log.Panic.Panicln("Standard input error:", err)
     }
 }
