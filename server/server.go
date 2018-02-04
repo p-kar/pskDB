@@ -19,7 +19,6 @@ import (
 var currServerInfo ServerInfo
 
 // global map that maintains info about all alive servers
-// [TODO] need to make accesses to this thread safe (mutually exclusive)
 var serverMap = make(map[string]*ServerInfo)
 
 // mutex for serverMap
@@ -77,7 +76,6 @@ func (sl *ServerListener) JoinClusterAsServer(req *JoinClusterAsServerRequest,
 	new_server_info.Alive = true
 	new_server_info.Suspicion = false
 
-	// [TODO] send new server notifications to all existing servers
 	for _, serv_info := range serverMap {
 		client := getRPCConnection(serv_info.Address)
 		if client == nil {
@@ -193,6 +191,7 @@ func (sl *ServerListener) KillServer(
 }
 
 func startHeartbeats() {
+
 	for {
 		select {
 		case <-doneHeartbeat:
