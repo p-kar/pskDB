@@ -25,11 +25,6 @@ var serverMap = make(map[string]*ServerInfo)
 // [TODO] make this a RWMutex to allow concurrent reads
 var mutex_server_map = &sync.Mutex{}
 
-// map for client info
-var clientMap = make(map[string]*ClientInfo)
-
-var mutex_client_map = &sync.Mutex{}
-
 // Logging instance
 var log *logger.Logger
 
@@ -41,7 +36,7 @@ var blacklistMap = make(map[string]bool)
 
 var mutex_blacklist_map = &sync.Mutex{}
 
-// get RPC client object given an IP address
+// get RPC client object given an IP address - if not in the blacklist
 func getRPCConnection(address string) *rpc.Client {
 
 	if _, ok := blacklistMap[address]; ok == true {
@@ -110,21 +105,11 @@ func (sl *ServerListener) JoinClusterAsServer(req *JoinClusterAsServerRequest,
 	return nil
 }
 
+// Return current server info to the client so that client can make RPC calls when required
 func (sl *ServerListener) JoinClientToServer(
-	req *JoinServerRequest, reply *JoinServerReply) error {
-	if _, ok := clientMap[req.Id]; ok == true {
-		reply = nil
-		return nil
-	}
-	connClientInfo := new(ClientInfo)
-	connClientInfo.Id = req.Id
-	connClientInfo.IP_address = req.IP_address
-	connClientInfo.Port_num = req.Port_num
-	connClientInfo.Address = req.IP_address + ":" + req.Port_num
-	mutex_client_map.Lock()
-	clientMap[connClientInfo.Id] = connClientInfo
-	mutex_client_map.Unlock()
-	log.Info.Printf("Received Client info [Id: %s, Port_num: %s].\n", connClientInfo.Id, connClientInfo.Port_num)
+	req *Nothing, reply *JoinServerReply) error {
+
+	// log.Info.Printf("Sending server info to client [Id: %s, Port_num: %s].\n", connClientInfo.Id, connClientInfo.Port_num)
 
 	reply.CurrServerInfo = NewServerInfoHeap(currServerInfo)
 
@@ -193,6 +178,8 @@ func (sl *ServerListener) HeartbeatNotification(
 	return nil
 }
 
+// Create connection between server/client and server. Remove node from blacklist to prevent server from making an RPC Connection
+// [TODO] to restore connection, any sync reqd?
 func (sl *ServerListener) CreateConnection(
 	req *BlackListInfo, reply *Nothing) error {
 
@@ -209,6 +196,7 @@ func (sl *ServerListener) CreateConnection(
 	return nil
 }
 
+// Break connection between server/client and server. Add server/client to blacklist to prevent it from making an RPC Connection
 func (sl *ServerListener) BreakConnection(
 	req *BlackListInfo, reply *Nothing) error {
 	// nodeId := req.Id

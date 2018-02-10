@@ -50,15 +50,6 @@ func NewServerInfoHeap(serv_info ServerInfo) *ServerInfo {
 	return new_server_info
 }
 
-type JoinServerRequest struct {
-	// unique identifier of the server that client wants to join
-	Id string
-	// ip address of the server that client wants to join
-	IP_address string
-	// port number for the server that client wants to join
-	Port_num string
-}
-
 // the reply returns the server info connected to by the client
 type JoinServerReply struct {
 	// list of server already in the cluster

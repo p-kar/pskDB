@@ -12,8 +12,8 @@ import (
 // Logging instance
 var log *logger.Logger
 
-// server info map
-var serverMap = make(map[string]*ServerInfo)
+// server info
+var serverInfo *ServerInfo
 
 var mutex_server_map = &sync.Mutex{}
 
@@ -51,6 +51,8 @@ type ClientListener int
 // 	return nil
 // }
 
+// Create connection between client and server. Remove server from blacklist to prevent it from making an RPC Connection
+// [TODO] to restore connection, any sync reqd?
 func (cl *ClientListener) CreateConnection(
 	req *BlackListInfo, reply *Nothing) error {
 
@@ -64,9 +66,34 @@ func (cl *ClientListener) CreateConnection(
 		// mutex_blacklistServer_map.Unlock()
 		log.Info.Printf("Removed Server [ID: %s, Port_num: %s] from blacklist.\n", nodeId, req.Port_num)
 	}
+	if nodeId != serverInfo.Id {
+		server := getRPCConnection(Address)
+		if server != nil {
+
+			var join_server_req bool = true
+			var join_server_reply *JoinServerReply
+			// Get server info via RPC call
+			err := server.Call("ServerListener.JoinClientToServer",
+				&join_server_req, &join_server_reply)
+
+			if err == nil && join_server_reply != nil {
+				server_id := join_server_reply.CurrServerInfo.Id
+				log.Info.Printf("Found the server [ID: %s, Port_num: %s].\n",
+					server_id, join_server_reply.CurrServerInfo.Port_num)
+				mutex_server_map.Lock()
+				serverInfo = NewServerInfoHeap(*join_server_reply.CurrServerInfo)
+				mutex_server_map.Unlock()
+			} else {
+				log.Warning.Printf("RPC call to join server at port number: %s failed.\n", os.Args[3])
+
+			}
+			server.Close()
+		}
+	}
 	return nil
 }
 
+// Break connection between client and server. Add server to blacklist to prevent it from making an RPC Connection
 func (cl *ClientListener) BreakConnection(
 	req *BlackListInfo, reply *Nothing) error {
 	// nodeId := req.Id
@@ -81,6 +108,7 @@ func (cl *ClientListener) BreakConnection(
 	return nil
 }
 
+// An RPC to check if client is alive
 func (cl *ClientListener) Ping(
 	req *Nothing, reply *Nothing) error {
 	*reply = *req
@@ -108,12 +136,9 @@ func main() {
 		server := getRPCConnection("localhost:" + os.Args[3])
 		if server != nil {
 
-			join_server_req := JoinServerRequest{
-				Id:         currClientInfo.Id,
-				IP_address: currClientInfo.IP_address,
-				Port_num:   currClientInfo.Port_num,
-			}
+			var join_server_req bool = true
 			var join_server_reply *JoinServerReply
+			// Get server info via RPC call
 			err := server.Call("ServerListener.JoinClientToServer",
 				&join_server_req, &join_server_reply)
 
@@ -121,7 +146,9 @@ func main() {
 				server_id := join_server_reply.CurrServerInfo.Id
 				log.Info.Printf("Found the server [ID: %s, Port_num: %s].\n",
 					server_id, join_server_reply.CurrServerInfo.Port_num)
-				serverMap[server_id] = NewServerInfoHeap(*join_server_reply.CurrServerInfo)
+				mutex_server_map.Lock()
+				serverInfo = NewServerInfoHeap(*join_server_reply.CurrServerInfo)
+				mutex_server_map.Unlock()
 			} else {
 				log.Warning.Printf("RPC call to join server at port number: %s failed.\n", os.Args[3])
 
