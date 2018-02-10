@@ -7,6 +7,17 @@ import (
 // placeholder for RPC calls which don't reply
 type Nothing bool
 
+type ClientInfo struct {
+	// unique id of the client
+	Id string
+	// ip address of the client
+	IP_address string
+	// rpc address of the client (IP_address + ":" + Port_num)
+	Address string
+	// port number of the client
+	Port_num string
+}
+
 type ServerInfo struct {
 	// unique id of the server
 	Id string
@@ -33,48 +44,10 @@ func NewServerInfoHeap(serv_info ServerInfo) *ServerInfo {
 
 	new_server_info.Id = serv_info.Id
 	new_server_info.IP_address = serv_info.IP_address
-	new_server_info.Port_num = serv_info.Port_num
 	new_server_info.Address = serv_info.Address
-	new_server_info.Heartbeat_seqnum = serv_info.Heartbeat_seqnum
-	new_server_info.Timestamp = time.Now()
-	new_server_info.Alive = serv_info.Alive
-	new_server_info.Suspicion = serv_info.Suspicion
+	new_server_info.Port_num = serv_info.Port_num
 
 	return new_server_info
-}
-
-type JoinClusterAsServerRequest struct {
-	// unique identifier of the server that wants to join
-	Id string
-	// ip address of the server that wants to join
-	IP_address string
-	// port number for the server that wants to join
-	Port_num string
-}
-
-// the reply returns a list of servers that are connected in the cluster
-type JoinClusterAsServerReply struct {
-	// list of server already in the cluster
-	ServerInfoList []ServerInfo
-}
-
-type NewServerNotificationRequest struct {
-	// unique identifier of the server that sends the notification
-	Id string
-	// new server info
-	NewServerInfo ServerInfo
-}
-
-type HeartbeatNotificationRequest struct {
-	// unique identifier of the server that sends the notification
-	Id string
-	// list of server already in the cluster
-	ServerInfoList []ServerInfo
-}
-
-type KillServerNotificationRequest struct {
-	// unique id of the server
-	Id string
 }
 
 type JoinServerRequest struct {
@@ -90,15 +63,4 @@ type JoinServerRequest struct {
 type JoinServerReply struct {
 	// list of server already in the cluster
 	CurrServerInfo *ServerInfo
-}
-
-type ClientInfo struct {
-	// unique id of the client
-	Id string
-	// ip address of the client
-	IP_address string
-	// rpc address of the client (IP_address + ":" + Port_num)
-	Address string
-	// port number of the client
-	Port_num string
 }

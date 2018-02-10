@@ -25,6 +25,9 @@ var serverMap = make(map[string]*ServerInfo)
 // [TODO] make this a RWMutex to allow concurrent reads
 var mutex_server_map = &sync.Mutex{}
 
+// map for client info
+var clientMap = make(map[string]*ClientInfo)
+
 // Logging instance
 var log *logger.Logger
 
@@ -92,6 +95,21 @@ func (sl *ServerListener) JoinClusterAsServer(req *JoinClusterAsServerRequest,
 	}
 	// adding the new server to the server map
 	serverMap[req.Id] = new_server_info
+	return nil
+}
+
+func (sl *ServerListener) JoinClientToServer(
+	req *JoinServerRequest, reply *JoinServerReply) error {
+	connClientInfo := new(ClientInfo)
+	connClientInfo.Id = req.Id
+	connClientInfo.IP_address = req.IP_address
+	connClientInfo.Port_num = req.Port_num
+	connClientInfo.Address = req.IP_address + ":" + req.Port_num
+	clientMap[connClientInfo.Id] = connClientInfo
+	log.Info.Printf("Received Client info [Id: %s, Port_num: %s].\n", connClientInfo.Id, connClientInfo.Port_num)
+
+	reply.CurrServerInfo = NewServerInfoHeap(currServerInfo)
+
 	return nil
 }
 
