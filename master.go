@@ -80,12 +80,16 @@ func main() {
 			}
 			serverPort := serverNodeMap[nodeId]
 			client := getRPCConnection("localhost:" + strconv.Itoa(serverPort))
-			req := true
-			var reply bool
-			client.Call("ServerListener.KillServer", &req, &reply)
-			// log.Info.Println("killServer finished")
-			delete(serverNodeMap, nodeId)
-			client.Close()
+			if client != nil {
+				req := true
+				var reply bool
+				client.Call("ServerListener.KillServer", &req, &reply)
+				// log.Info.Println("killServer finished")
+				delete(serverNodeMap, nodeId)
+				client.Close()
+			} else {
+				log.Warning.Println("getRPCConnection returned a null value")
+			}
 		case "joinClient":
 			log.Info.Println("TODO ", commandSplit)
 		case "breakConnection":
