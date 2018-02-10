@@ -135,6 +135,9 @@ func main() {
 			} else if _, ok := clientNodeMap[clientNodeId]; ok == true {
 				log.Warning.Printf("Client ID: %s already present in the cluster\n", clientNodeId)
 				continue
+			} else if _, ok := serverNodeMap[serverNodeId]; ok == false {
+				log.Warning.Printf("Server ID: %s not present in the cluster\n", clientNodeId)
+				continue
 			}
 			args := []string{}
 			args = append(args, clientNodeId, strconv.Itoa(serverNextPort), strconv.Itoa(serverNodeMap[serverNodeId]))
