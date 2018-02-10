@@ -67,8 +67,35 @@ func main() {
 			if err != nil {
 				log.Panic.Panicln(err)
 			}
-			log.Info.Println("Started server with process id", joinCmd.Process.Pid)
+			// log.Info.Println("Started server with process id", joinCmd.Process.Pid)
 			go joinCmd.Wait()
+
+			req := true
+			var reply bool
+			var calls int = 0
+			for {
+				calls = calls + 1
+				client := getRPCConnection("localhost:" + strconv.Itoa(serverNodeMap[nodeId]))
+				if client != nil {
+					client.Call("ServerListener.Ping", &req, &reply)
+					if reply == req {
+						log.Info.Println("Started server with process id", joinCmd.Process.Pid)
+						break
+					}
+				}
+				if calls > 100 {
+					log.Warning.Printf("Killing server %d\n", joinCmd.Process.Pid)
+					killCmd := exec.Command("kill", strconv.Itoa(joinCmd.Process.Pid))
+					killCmd.Stdout = os.Stdout
+					killCmd.Stderr = os.Stderr
+					err := killCmd.Start()
+					if err != nil {
+						log.Panic.Panicln(err)
+					}
+					break
+				}
+			}
+
 		case "killServer":
 			log.Info.Println("Executing...", commandSplit)
 			// get Node ID
@@ -90,6 +117,7 @@ func main() {
 			} else {
 				log.Warning.Println("getRPCConnection returned a null value")
 			}
+
 		case "joinClient":
 			log.Info.Println("TODO ", commandSplit)
 		case "breakConnection":

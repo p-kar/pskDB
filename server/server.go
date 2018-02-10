@@ -263,6 +263,12 @@ func startHeartbeats() {
 	}
 }
 
+func (sl *ServerListener) Ping(
+	req *Nothing, reply *Nothing) error {
+	*reply = *req
+	return nil
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		log.Panic.Panicln("New server id and port not provided.")
@@ -335,4 +341,5 @@ func main() {
 	listener := new(ServerListener)
 	rpc.Register(listener)
 	rpc.Accept(inbound)
+	// go rpc.Wait()
 }
