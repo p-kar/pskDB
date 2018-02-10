@@ -28,14 +28,26 @@ var mutex_server_map = &sync.Mutex{}
 // map for client info
 var clientMap = make(map[string]*ClientInfo)
 
+var mutex_client_map = &sync.Mutex{}
+
 // Logging instance
 var log *logger.Logger
 
 // Kill Heartbeat
 var doneHeartbeat = make(chan bool)
 
+// List of blacklisted servers
+var blacklistMap = make(map[string]bool)
+
+var mutex_blacklist_map = &sync.Mutex{}
+
 // get RPC client object given an IP address
 func getRPCConnection(address string) *rpc.Client {
+
+	if _, ok := blacklistMap[address]; ok == true {
+		return nil
+	}
+
 	client, err := rpc.Dial("tcp", address)
 	if err != nil {
 		// log.Warning.Printf("Unable to dial server at address: %s.\n",
@@ -100,12 +112,18 @@ func (sl *ServerListener) JoinClusterAsServer(req *JoinClusterAsServerRequest,
 
 func (sl *ServerListener) JoinClientToServer(
 	req *JoinServerRequest, reply *JoinServerReply) error {
+	if _, ok := clientMap[req.Id]; ok == true {
+		reply = nil
+		return nil
+	}
 	connClientInfo := new(ClientInfo)
 	connClientInfo.Id = req.Id
 	connClientInfo.IP_address = req.IP_address
 	connClientInfo.Port_num = req.Port_num
 	connClientInfo.Address = req.IP_address + ":" + req.Port_num
+	mutex_client_map.Lock()
 	clientMap[connClientInfo.Id] = connClientInfo
+	mutex_client_map.Unlock()
 	log.Info.Printf("Received Client info [Id: %s, Port_num: %s].\n", connClientInfo.Id, connClientInfo.Port_num)
 
 	reply.CurrServerInfo = NewServerInfoHeap(currServerInfo)
@@ -175,6 +193,35 @@ func (sl *ServerListener) HeartbeatNotification(
 	return nil
 }
 
+func (sl *ServerListener) CreateConnection(
+	req *BlackListInfo, reply *Nothing) error {
+
+	nodeId := req.Id
+	Address := req.IP_address + ":" + req.Port_num
+	*reply = false
+
+	if _, ok := blacklistMap[Address]; ok == true {
+		// mutex_blacklistServer_map.Lock()
+		delete(blacklistMap, Address)
+		// mutex_blacklistServer_map.Unlock()
+		log.Info.Printf("Removed Node [ID: %s, Port_num: %s] from blacklist.\n", nodeId, req.Port_num)
+	}
+	return nil
+}
+
+func (sl *ServerListener) BreakConnection(
+	req *BlackListInfo, reply *Nothing) error {
+	// nodeId := req.Id
+	Address := req.IP_address + ":" + req.Port_num
+	// acquire lock to the blacklist map
+	mutex_blacklist_map.Lock()
+	blacklistMap[Address] = true
+	mutex_blacklist_map.Unlock()
+
+	log.Info.Printf("Added Server [Address: %s] to blacklist.\n", Address)
+
+	return nil
+}
 func (sl *ServerListener) KillServerNotification(
 	req *KillServerNotificationRequest, reply *Nothing) error {
 	nodeId := req.Id
@@ -207,6 +254,12 @@ func (sl *ServerListener) KillServer(
 	doneHeartbeat <- true
 	return nil
 }
+
+// func (sl *ServerListener) GetServerInfo(
+// 	req *Nothing, reply *ServerInfo) error {
+// 	reply = NewServerInfoHeap(currServerInfo)
+// 	return nil
+// }
 
 func startHeartbeats() {
 
@@ -264,6 +317,7 @@ func startHeartbeats() {
 				if perm[pidx] == kidx {
 					// send heartbeat
 					client := getRPCConnection(serverMap[pid].Address)
+
 					if client != nil {
 						client.Go("ServerListener.HeartbeatNotification",
 							&hearbeat_req, &hearbeat_reply, nil)
