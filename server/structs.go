@@ -4,9 +4,6 @@ import (
 	"time"
 )
 
-// placeholder for RPC calls which don't reply
-type Nothing bool
-
 type ServerInfo struct {
 	// unique id of the server
 	Id string
@@ -76,39 +73,4 @@ type HeartbeatNotificationRequest struct {
 type KillServerNotificationRequest struct {
 	// unique id of the server that received kill request from master
 	Id string
-}
-
-type JoinServerRequest struct {
-	// unique identifier of the server that client wants to join
-	Id string
-	// ip address of the server that client wants to join
-	IP_address string
-	// port number for the server that client wants to join
-	Port_num string
-}
-
-// the reply returns the server info connected to by the client
-type JoinServerReply struct {
-	// list of server already in the cluster
-	CurrServerInfo *ServerInfo
-}
-
-type ClientInfo struct {
-	// unique id of the client
-	Id string
-	// ip address of the client
-	IP_address string
-	// rpc address of the client (IP_address + ":" + Port_num)
-	Address string
-	// port number of the client
-	Port_num string
-}
-
-type BlackListInfo struct {
-	// unique id of the server/client
-	Id string
-	// ip address of the node
-	IP_address string
-	// Port number of the node
-	Port_num string
 }

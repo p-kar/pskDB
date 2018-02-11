@@ -2,15 +2,15 @@ package main
 
 import (
 	// "fmt"
-	"../logger"
-	"errors"
-	"math/rand"
-	"net"
-	"net/rpc"
-	"os"
-	"sort"
-	"sync"
-	"time"
+    "os"
+    "net"
+    "sort"
+    "sync"
+    "time"
+    "errors"
+    "net/rpc"
+    "math/rand"
+    cc "../common"
 )
 
 // this server's info structure
@@ -26,12 +26,12 @@ var serverMap = make(map[string]*ServerInfo)
 var mutex_server_map = &sync.Mutex{}
 
 // Logging instance
-var log *logger.Logger
+var log *cc.Logger
 
 // Kill Heartbeat
 var doneHeartbeat = make(chan bool)
 
-// List of blacklisted servers
+// List of blacklisted nodes
 var blacklistMap = make(map[string]bool)
 
 var mutex_blacklist_map = &sync.Mutex{}
@@ -95,7 +95,7 @@ func (sl *ServerListener) JoinClusterAsServer(req *JoinClusterAsServerRequest,
 			Id:            currServerInfo.Id,
 			NewServerInfo: *new_server_info,
 		}
-		var new_server_not_reply Nothing
+		var new_server_not_reply cc.Nothing
 		client.Go("ServerListener.NewServerNotification",
 			&new_server_not_req, &new_server_not_reply, nil)
 		client.Close()
@@ -105,26 +105,15 @@ func (sl *ServerListener) JoinClusterAsServer(req *JoinClusterAsServerRequest,
 	return nil
 }
 
-// Return current server info to the client so that client can make RPC calls when required
-func (sl *ServerListener) JoinClientToServer(
-	req *Nothing, reply *JoinServerReply) error {
-
-	// log.Info.Printf("Sending server info to client [Id: %s, Port_num: %s].\n", connClientInfo.Id, connClientInfo.Port_num)
-
-	reply.CurrServerInfo = NewServerInfoHeap(currServerInfo)
-
-	return nil
-}
-
 // used to notify servers in the cluster that a new server has been added
 // this func is intended to be used as a non-blocking RPC call
 func (sl *ServerListener) NewServerNotification(
-	req *NewServerNotificationRequest, reply *Nothing) error {
+	req *NewServerNotificationRequest, reply *cc.Nothing) error {
 	log.Info.Printf("New server [ID: %s, Port Number: %s] notification received from server [ID: %s].\n", req.NewServerInfo.Id,
 		req.NewServerInfo.Port_num, req.Id)
 	mutex_server_map.Lock()
 	defer mutex_server_map.Unlock()
-	// if already in the server map do nothing
+	// if already in the server map do cc.nothing
 	if _, ok := serverMap[req.NewServerInfo.Id]; ok {
 		*reply = false
 		return nil
@@ -136,7 +125,7 @@ func (sl *ServerListener) NewServerNotification(
 }
 
 func (sl *ServerListener) HeartbeatNotification(
-	req *HeartbeatNotificationRequest, reply *Nothing) error {
+	req *HeartbeatNotificationRequest, reply *cc.Nothing) error {
 	*reply = false
 	// acquire lock on server map
 	mutex_server_map.Lock()
@@ -181,37 +170,31 @@ func (sl *ServerListener) HeartbeatNotification(
 // Create connection between server/client and server. Remove node from blacklist to prevent server from making an RPC Connection
 // [TODO] to restore connection, any sync reqd?
 func (sl *ServerListener) CreateConnection(
-	req *BlackListInfo, reply *Nothing) error {
-
-	nodeId := req.Id
-	Address := req.IP_address + ":" + req.Port_num
-	*reply = false
-
-	if _, ok := blacklistMap[Address]; ok == true {
-		// mutex_blacklistServer_map.Lock()
-		delete(blacklistMap, Address)
-		// mutex_blacklistServer_map.Unlock()
-		log.Info.Printf("Removed Node [ID: %s, Port_num: %s] from blacklist.\n", nodeId, req.Port_num)
+	req *cc.CreateConnectionRequest, reply *cc.Nothing) error {
+    // [TODO] do we need the id?
+    mutex_blacklist_map.Lock()
+    defer mutex_blacklist_map.Unlock()
+	if _, ok := blacklistMap[req.Address]; ok == true {
+		delete(blacklistMap, req.Address)
+		log.Info.Printf("Removed node [ID: %s, Address: %s] from blacklist.\n", req.Id, req.Address)
 	}
 	return nil
 }
 
 // Break connection between server/client and server. Add server/client to blacklist to prevent it from making an RPC Connection
 func (sl *ServerListener) BreakConnection(
-	req *BlackListInfo, reply *Nothing) error {
-	// nodeId := req.Id
-	Address := req.IP_address + ":" + req.Port_num
-	// acquire lock to the blacklist map
+	req *cc.BreakConnectionRequest, reply *cc.Nothing) error {
+    // [TODO] do we need the id?
 	mutex_blacklist_map.Lock()
-	blacklistMap[Address] = true
-	mutex_blacklist_map.Unlock()
+	defer mutex_blacklist_map.Unlock()
+    blacklistMap[req.Address] = true
 
-	log.Info.Printf("Added Server [Address: %s] to blacklist.\n", Address)
+	log.Info.Printf("Added node [Address: %s] to blacklist.\n", req.Address)
 
 	return nil
 }
 func (sl *ServerListener) KillServerNotification(
-	req *KillServerNotificationRequest, reply *Nothing) error {
+	req *KillServerNotificationRequest, reply *cc.Nothing) error {
 	nodeId := req.Id
 	*reply = false
 	// acquire lock on server map
@@ -224,12 +207,12 @@ func (sl *ServerListener) KillServerNotification(
 }
 
 func (sl *ServerListener) KillServer(
-	req *bool, reply *bool) error {
+	req *cc.Nothing, reply *cc.Nothing) error {
 	*reply = false
 	killserver_req := KillServerNotificationRequest{
 		Id: currServerInfo.Id,
 	}
-	var killserver_reply Nothing
+	var killserver_reply cc.Nothing
 	// send message to all servers that I got a kill request from the master
 	for pid := range serverMap {
 		client := getRPCConnection(serverMap[pid].Address)
@@ -242,12 +225,6 @@ func (sl *ServerListener) KillServer(
 	doneHeartbeat <- true
 	return nil
 }
-
-// func (sl *ServerListener) GetServerInfo(
-// 	req *Nothing, reply *ServerInfo) error {
-// 	reply = NewServerInfoHeap(currServerInfo)
-// 	return nil
-// }
 
 func startHeartbeats() {
 	for {
@@ -281,7 +258,7 @@ func startHeartbeats() {
 			hearbeat_req := HeartbeatNotificationRequest{
 				Id: currServerInfo.Id,
 			}
-			var hearbeat_reply Nothing
+			var hearbeat_reply cc.Nothing
 			hearbeat_req.ServerInfoList = append(hearbeat_req.ServerInfoList,
 				currServerInfo)
 			for _, serv_info := range serverMap {
@@ -321,9 +298,8 @@ func startHeartbeats() {
 	}
 }
 
-func (sl *ServerListener) Ping(
-	req *Nothing, reply *Nothing) error {
-	*reply = *req
+func (sl *ServerListener) PingServer(
+	req *cc.Nothing, reply *cc.Nothing) error {
 	return nil
 }
 
@@ -332,7 +308,7 @@ func main() {
 		log.Panic.Panicln("New server id and port not provided.")
 	}
 	// init the log
-	log = logger.NewLogger("[ SERVER "+os.Args[1]+" ] ", os.Stdout,
+	log = cc.NewLogger("[ SERVER "+os.Args[1]+" ] ", os.Stdout,
 		os.Stdout, os.Stdout, os.Stderr, os.Stderr)
 
 	currServerInfo = ServerInfo{
@@ -399,5 +375,4 @@ func main() {
 	listener := new(ServerListener)
 	rpc.Register(listener)
 	rpc.Accept(inbound)
-	// go rpc.Wait()
 }
