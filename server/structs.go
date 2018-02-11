@@ -23,6 +23,8 @@ type ServerInfo struct {
 	Alive bool
 	// boolean flag that is true when the server is in suspicion state
 	Suspicion bool
+    // Lamport's logical timestamp [ time.pid ]
+    Lamport_Timestamp float64
 }
 
 // declares a NewServerInfo object in heap and returns pointer
@@ -37,6 +39,7 @@ func NewServerInfoHeap(serv_info ServerInfo) *ServerInfo {
 	new_server_info.Timestamp = time.Now()
 	new_server_info.Alive = serv_info.Alive
 	new_server_info.Suspicion = serv_info.Suspicion
+    new_server_info.Lamport_Timestamp = serv_info.Lamport_Timestamp
 
 	return new_server_info
 }

@@ -22,3 +22,10 @@ type BreakConnectionRequest struct {
 	// needed for client to connect to server
 	Address string
 }
+
+type PutKeyValueRequest struct {
+	// key
+	Key string
+	// value to be stored in the key value pair
+	Value string
+}
