@@ -76,10 +76,11 @@ func main() {
 			var calls int = 0
 			for {
 				calls = calls + 1
-				client := getRPCConnection("localhost:" + strconv.Itoa(serverNodeMap[nodeId]))
-				if client != nil {
-					err := client.Call("ServerListener.PingServer", &req, &reply)
+				rpc_client := getRPCConnection("localhost:" + strconv.Itoa(serverNodeMap[nodeId]))
+				if rpc_client != nil {
+					err := rpc_client.Call("ServerListener.PingServer", &req, &reply)
 					if err != nil {
+                        rpc_client.Close()
                         continue
                     }
                     break
@@ -104,19 +105,22 @@ func main() {
 			nodeId := commandSplit[1]
 			// get server port number for RPC call
 			if _, ok := serverNodeMap[nodeId]; ok == false {
-				log.Warning.Printf("Server ID: %s is not present in the cluster\n", nodeId)
+				log.Warning.Printf("Server [ID: %s] is not present in the cluster\n", nodeId)
 				continue
 			}
 			serverPort := serverNodeMap[nodeId]
-			client := getRPCConnection("localhost:" + strconv.Itoa(serverPort))
-			if client != nil {
+			rpc_client := getRPCConnection("localhost:" + strconv.Itoa(serverPort))
+			if rpc_client != nil {
 				var req, reply cc.Nothing
-				client.Call("ServerListener.KillServer", &req, &reply)
+				err := rpc_client.Call("ServerListener.KillServer", &req, &reply)
+                if err != nil {
+                    log.Warning.Printf("Kill server [ID: %s] command failed.", nodeId)
+                }
 				// log.Info.Println("killServer finished")
 				delete(serverNodeMap, nodeId)
-				client.Close()
+				rpc_client.Close()
 			} else {
-				log.Warning.Println("getRPCConnection returned a null value")
+				log.Warning.Println("getRPCConnection returned a nil value.")
 			}
 
 		case "joinClient":
@@ -166,10 +170,11 @@ func main() {
 
 			for {
 				calls++
-				client := getRPCConnection("localhost:" + strconv.Itoa(clientNodeMap[clientNodeId]))
-				if client != nil {
-                    err := client.Call("ClientListener.PingClient", &req, &reply)
+				rpc_client := getRPCConnection("localhost:" + strconv.Itoa(clientNodeMap[clientNodeId]))
+				if rpc_client != nil {
+                    err := rpc_client.Call("ClientListener.PingClient", &req, &reply)
                     if err != nil {
+                        rpc_client.Close()
                         continue
                     }
                     break
@@ -360,10 +365,71 @@ func main() {
 			log.Info.Println("TODO ", commandSplit)
 		case "printStore":
 			log.Info.Println("TODO ", commandSplit)
+
 		case "put":
-			log.Info.Println("TODO ", commandSplit)
+			log.Info.Println("Executing...", commandSplit)
+
+            // get client ID
+            client_id := commandSplit[1]
+            // check if client present
+            if _, ok := clientNodeMap[client_id]; ok == false {
+                log.Warning.Printf("Client [ID: %s] is not present in the cluster.\n", client_id)
+                continue
+            }
+            clientPort := clientNodeMap[client_id]
+            rpc_client := getRPCConnection("localhost:" + strconv.Itoa(clientPort))
+            if rpc_client != nil {
+                var put_kv_client_req cc.PutKVClientRequest
+                var put_kv_client_reply cc.Nothing
+
+                put_kv_client_req.Key = commandSplit[2]
+                put_kv_client_req.Value = commandSplit[3]
+
+                err := rpc_client.Call("ClientListener.PutKVClient",
+                    &put_kv_client_req, &put_kv_client_reply)
+
+                if err != nil {
+                    log.Warning.Printf("PutKeyValueClient request to client [ID: %s] failed [err: %s].", client_id, err)
+                }
+                rpc_client.Close()
+            } else {
+                log.Warning.Println("getRPCConnection returned a nil value.")
+            }
+
 		case "get":
-			log.Info.Println("TODO ", commandSplit)
+			log.Info.Println("Executing...", commandSplit)
+
+            // get client ID
+            client_id := commandSplit[1]
+            // check if client present
+            if _, ok := clientNodeMap[client_id]; ok == false {
+                log.Warning.Printf("Client [ID: %s] is not present in the cluster.\n", client_id)
+                continue
+            }
+            clientPort := clientNodeMap[client_id]
+            rpc_client := getRPCConnection("localhost:" + strconv.Itoa(clientPort))
+            if rpc_client != nil {
+                var get_kv_client_req cc.GetKVClientRequest
+                var get_kv_client_reply cc.GetKVClientReply
+
+                get_kv_client_req.Key = commandSplit[2]
+
+                err := rpc_client.Call("ClientListener.GetKVClient",
+                    &get_kv_client_req, &get_kv_client_reply)
+
+                if err != nil {
+                    log.Warning.Printf("PutKeyValueClient request to client [ID: %s] failed [err: %s].", client_id, err)
+                }
+                rpc_client.Close()
+                log.Info.Printf("Key: %s, Value: %s, Version: %f.\n",
+                    get_kv_client_reply.Key,
+                    get_kv_client_reply.Value,
+                    get_kv_client_reply.Version,
+                )
+            } else {
+                log.Warning.Println("getRPCConnection returned a nil value.")
+            }
+
 		default:
 			log.Warning.Println("Command", commandSplit, "not recognized")
 			break

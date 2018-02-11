@@ -16,8 +16,6 @@ import (
 )
 
 // this server's info structure
-// [TODO] if this not just only read only then will not be thread safe
-// need to check when sequence number is updated
 var currServerInfo ServerInfo
 
 // mutex for currServerInfo
@@ -43,7 +41,10 @@ var blacklistMap = make(map[string]bool)
 var mutex_blacklist_map = &sync.Mutex{}
 
 // map for key value store
-// var keyvalueMap = make(map[string] *KeyValueInfo)
+var keyValueMap = make(map[string] *KeyValueInfo)
+
+// mutex for keyValueMap
+var mutex_key_value_map = &sync.Mutex{}
 
 // get RPC client object given an IP address - if not in the blacklist
 func getRPCConnection(address string) *rpc.Client {
@@ -79,11 +80,13 @@ func GetLamportTimestamp() float64 {
     return currServerInfo.Lamport_Timestamp
 }
 
-// Increment Lamport's timestamp (needed for reads and writes)
-func IncrementLamportTimestamp() {
+// Atomically get and increment Lamport's timestamp (needed for reads and writes)
+func GetAndIncrementLamportTimestamp() float64 {
     mutex_curr_server_info.Lock()
     defer mutex_curr_server_info.Unlock()
+    curr_lamport_time := currServerInfo.Lamport_Timestamp
     currServerInfo.Lamport_Timestamp += 1.0
+    return curr_lamport_time
 }
 
 type ServerListener int
@@ -276,6 +279,47 @@ func (sl *ServerListener) KillServer(
 	return nil
 }
 
+// write a <K,V> pair in the key value store
+func (sl *ServerListener) PutKVServer (
+    req *cc.PutKVServerRequest, reply *cc.Nothing) error {
+    // acquire lock on key value store
+    mutex_key_value_map.Lock()
+    defer mutex_key_value_map.Unlock()
+    if _, ok := keyValueMap[req.Key]; ok == false {
+        keyValueMap[req.Key] = new(KeyValueInfo)
+        keyValueMap[req.Key].Key = req.Key
+        keyValueMap[req.Key].Value = req.Value
+        keyValueMap[req.Key].Version = GetAndIncrementLamportTimestamp()
+    } else {
+        curr_lamport_time := GetAndIncrementLamportTimestamp()
+        if keyValueMap[req.Key].Version < curr_lamport_time {
+            keyValueMap[req.Key].Value = req.Value
+            keyValueMap[req.Key].Version = curr_lamport_time
+        }
+    }
+    return nil
+}
+
+// read a <K,V> pair given K from the key value store
+func (sl *ServerListener) GetKVServer (
+    req *cc.GetKVServerRequest, reply *cc.GetKVServerReply) error {
+    // acquire lock on key value store
+    mutex_key_value_map.Lock()
+    defer mutex_key_value_map.Unlock()
+    if val, ok := keyValueMap[req.Key]; ok == false {
+        reply.Key = req.Key
+        reply.Value = "ERR_KEY"
+        reply.Version = GetAndIncrementLamportTimestamp()
+    } else {
+        GetAndIncrementLamportTimestamp()
+        reply.Key = val.Key
+        reply.Value = val.Value
+        reply.Version = val.Version
+    }
+    return nil
+}
+
+// An RPC to check if server is alive
 func (sl *ServerListener) PingServer(
     req *cc.Nothing, reply *cc.Nothing) error {
     return nil

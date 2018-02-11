@@ -77,3 +77,12 @@ type KillServerNotificationRequest struct {
 	// unique id of the server that received kill request from master
 	Id string
 }
+
+type KeyValueInfo struct {
+    // K in the <K,V> pair
+    Key string
+    // V in the <K,V> pair
+    Value string
+    // lamport timestamp when this <K,V> pair was updated
+    Version float64
+}

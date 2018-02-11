@@ -23,9 +23,44 @@ type BreakConnectionRequest struct {
 	Address string
 }
 
-type PutKeyValueRequest struct {
+type PutKVClientRequest struct {
 	// key
 	Key string
 	// value to be stored in the key value pair
 	Value string
+}
+
+type PutKVServerRequest struct {
+	// key
+	Key string
+	// value to be stored in the key value pair
+	Value string
+}
+
+type GetKVClientRequest struct {
+	// key
+	Key string
+}
+
+type GetKVClientReply struct {
+	// key
+	Key string
+	// value returned by server
+	Value string
+	// lamport timestamp for this value
+	Version float64
+}
+
+type GetKVServerRequest struct {
+	// key
+	Key string
+}
+
+type GetKVServerReply struct {
+	// key
+	Key string
+	// value returned by server
+	Value string
+	// lamport timestamp for this value
+	Version float64
 }
