@@ -28,6 +28,7 @@ type ServerInfo struct {
 	Suspicion bool
 }
 
+// declares a NewServerInfo object in heap and returns pointer
 func NewServerInfoHeap(serv_info ServerInfo) *ServerInfo {
 	new_server_info := new(ServerInfo)
 
@@ -73,6 +74,6 @@ type HeartbeatNotificationRequest struct {
 }
 
 type KillServerNotificationRequest struct {
-	// unique id of the server
+	// unique id of the server that received kill request from master
 	Id string
 }

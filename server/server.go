@@ -191,7 +191,6 @@ func (sl *ServerListener) KillServer(
 }
 
 func startHeartbeats() {
-
 	for {
 		select {
 		case <-doneHeartbeat:
@@ -258,7 +257,6 @@ func startHeartbeats() {
 
 			mutex_server_map.Unlock()
 			time.Sleep(HEARTBEAT_TIME_INTERVAL * time.Millisecond)
-
 		}
 	}
 }

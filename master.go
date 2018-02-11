@@ -47,6 +47,9 @@ func main() {
 		switch commandSplit[0] {
 		case "joinServer":
 			log.Info.Println("Executing...", commandSplit)
+            // [TODO] make sure the server connected to atleast one server
+            // and the rpc listen has started otherwise the later request might
+            // end
 
 			// Create startup info i.e., arguments
 			// example arguments ["1" "9001" "9004" "9003"]
@@ -80,6 +83,7 @@ func main() {
 			}
 			serverPort := serverNodeMap[nodeId]
 			client := getRPCConnection("localhost:" + strconv.Itoa(serverPort))
+            // [TODO] do some retries and then abort if client is nil
 			req := true
 			var reply bool
 			client.Call("ServerListener.KillServer", &req, &reply)
