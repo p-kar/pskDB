@@ -430,7 +430,33 @@ func main() {
                 log.Warning.Println("getRPCConnection returned a nil value.")
             }
 
-		default:
+		case "printMemberList":
+            log.Info.Println("Executing...", commandSplit)
+            // get server ID
+            server_id := commandSplit[1]
+            // check if server present
+            if _, ok := serverNodeMap[server_id]; ok == false {
+                log.Warning.Printf("Server [ID: %s] is not present in the cluster.\n", server_id)
+                continue
+            }
+            serverPort := serverNodeMap[server_id]
+            rpc_client := getRPCConnection("localhost:" + strconv.Itoa(serverPort))
+            if rpc_client != nil {
+                var print_member_list_req cc.Nothing
+                var print_member_list_reply cc.Nothing
+
+                err := rpc_client.Call("ServerListener.PrintMembershipList",
+                    &print_member_list_req, &print_member_list_reply)
+
+                if err != nil {
+                    log.Warning.Printf("PrintMembershipList request to server [ID: %s] failed [err: %s].", server_id, err)
+                }
+                rpc_client.Close()
+            } else {
+                log.Warning.Println("getRPCConnection returned a nil value.")
+            }
+
+        default:
 			log.Warning.Println("Command", commandSplit, "not recognized")
 			break
 		}
