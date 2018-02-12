@@ -1,14 +1,14 @@
 package main
 
 import (
+	cc "./common"
+	"bufio"
+	"net/rpc"
 	"os"
-    "time"
-    "bufio"
-    "strings"
-    "strconv"
-    "os/exec"
-    "net/rpc"
-    cc "./common"
+	"os/exec"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // get RPC client object given an IP address
@@ -80,10 +80,10 @@ func main() {
 				if rpc_client != nil {
 					err := rpc_client.Call("ServerListener.PingServer", &req, &reply)
 					if err != nil {
-                        rpc_client.Close()
-                        continue
-                    }
-                    break
+						rpc_client.Close()
+						continue
+					}
+					break
 				}
 				if calls > cc.CREATE_SERVER_NUM_RETRIES {
 					log.Warning.Printf("Killing server %d\n", joinCmd.Process.Pid)
@@ -96,7 +96,7 @@ func main() {
 					}
 					break
 				}
-                time.Sleep(cc.SERVER_STARTUP_WAIT_TIME * time.Millisecond)
+				time.Sleep(cc.SERVER_STARTUP_WAIT_TIME * time.Millisecond)
 			}
 
 		case "killServer":
@@ -113,9 +113,9 @@ func main() {
 			if rpc_client != nil {
 				var req, reply cc.Nothing
 				err := rpc_client.Call("ServerListener.KillServer", &req, &reply)
-                if err != nil {
-                    log.Warning.Printf("Kill server [ID: %s] command failed.", nodeId)
-                }
+				if err != nil {
+					log.Warning.Printf("Kill server [ID: %s] command failed.", nodeId)
+				}
 				// log.Info.Println("killServer finished")
 				delete(serverNodeMap, nodeId)
 				rpc_client.Close()
@@ -141,15 +141,15 @@ func main() {
 				log.Warning.Printf("Server ID: %s not present in the cluster\n", clientNodeId)
 				continue
 			}
-            server_address := "localhost:" + strconv.Itoa(serverNodeMap[serverNodeId])
+			server_address := "localhost:" + strconv.Itoa(serverNodeMap[serverNodeId])
 			args := []string{}
 			args = append(
-                args,
-                clientNodeId,
-                strconv.Itoa(clientNextPort),
-                serverNodeId,
-                server_address,
-            )
+				args,
+				clientNodeId,
+				strconv.Itoa(clientNextPort),
+				serverNodeId,
+				server_address,
+			)
 			clientNodeMap[clientNodeId] = clientNextPort
 			clientNextPort++
 
@@ -172,13 +172,13 @@ func main() {
 				calls++
 				rpc_client := getRPCConnection("localhost:" + strconv.Itoa(clientNodeMap[clientNodeId]))
 				if rpc_client != nil {
-                    err := rpc_client.Call("ClientListener.PingClient", &req, &reply)
-                    if err != nil {
-                        rpc_client.Close()
-                        continue
-                    }
-                    break
-                }
+					err := rpc_client.Call("ClientListener.PingClient", &req, &reply)
+					if err != nil {
+						rpc_client.Close()
+						continue
+					}
+					break
+				}
 				if calls > cc.CREATE_CLIENT_NUM_RETRIES {
 					log.Warning.Printf("Killing client %d\n", joinCmd.Process.Pid)
 					killCmd := exec.Command("kill", strconv.Itoa(joinCmd.Process.Pid))
@@ -190,7 +190,7 @@ func main() {
 					}
 					break
 				}
-                time.Sleep(cc.CLIENT_STARTUP_WAIT_TIME * time.Millisecond)
+				time.Sleep(cc.CLIENT_STARTUP_WAIT_TIME * time.Millisecond)
 			}
 
 		case "breakConnection":
@@ -212,154 +212,154 @@ func main() {
 			} else if !(ok_3 || ok_4) {
 				log.Warning.Printf("Server ID: %s not present in the cluster\n", nodeId2)
 				continue
-			} else if (ok_2 && ok_4) {
-                log.Warning.Printf("Cannot breakConnection between %s and %s. Both are clients.\n", nodeId1, nodeId2)
-                continue
-            }
+			} else if ok_2 && ok_4 {
+				log.Warning.Printf("Cannot breakConnection between %s and %s. Both are clients.\n", nodeId1, nodeId2)
+				continue
+			}
 
 			var node1_break_conn_req cc.BreakConnectionRequest
 			var node2_break_conn_req cc.BreakConnectionRequest
 			var break_conn_reply cc.Nothing
 
-            // fill second node info
-            node1_break_conn_req.Id = nodeId2
-            if ok_3 {
-                node1_break_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId2])
-            }else if ok_4 {
-                node1_break_conn_req.Address = "localhost:" + strconv.Itoa(clientNodeMap[nodeId2])
-            }
+			// fill second node info
+			node1_break_conn_req.Id = nodeId2
+			if ok_3 {
+				node1_break_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId2])
+			} else if ok_4 {
+				node1_break_conn_req.Address = "localhost:" + strconv.Itoa(clientNodeMap[nodeId2])
+			}
 
-            // fill first node info
-            node2_break_conn_req.Id = nodeId1
-            if ok_1 {
-                node2_break_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId1])
-            } else if ok_2 {
-                node2_break_conn_req.Address = "localhost:" + strconv.Itoa(clientNodeMap[nodeId1])
-            }
+			// fill first node info
+			node2_break_conn_req.Id = nodeId1
+			if ok_1 {
+				node2_break_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId1])
+			} else if ok_2 {
+				node2_break_conn_req.Address = "localhost:" + strconv.Itoa(clientNodeMap[nodeId1])
+			}
 
-            node1_conn := getRPCConnection(node2_break_conn_req.Address)
+			node1_conn := getRPCConnection(node2_break_conn_req.Address)
 			if node1_conn != nil {
-                if ok_1 {
-                    err := node1_conn.Call("ServerListener.BreakConnection",
-                        &node1_break_conn_req, &break_conn_reply)
-                    if err != nil {
-                        log.Warning.Println("ServerListener.BreakConnection RPC call failed.\n")
-                    }
-                } else if ok_2 {
-                    err := node1_conn.Call("ClientListener.BreakConnection",
-                        &node1_break_conn_req, &break_conn_reply)
-                    if err != nil {
-                        log.Warning.Println("ClientListener.BreakConnection RPC call failed.\n")
-                    }
-                }
-                node1_conn.Close()
-            } else {
-                log.Warning.Printf("RPC call to node at address: %s failed.\n", node2_break_conn_req.Address)
-            }
+				if ok_1 {
+					err := node1_conn.Call("ServerListener.BreakConnection",
+						&node1_break_conn_req, &break_conn_reply)
+					if err != nil {
+						log.Warning.Println("ServerListener.BreakConnection RPC call failed.\n")
+					}
+				} else if ok_2 {
+					err := node1_conn.Call("ClientListener.BreakConnection",
+						&node1_break_conn_req, &break_conn_reply)
+					if err != nil {
+						log.Warning.Println("ClientListener.BreakConnection RPC call failed.\n")
+					}
+				}
+				node1_conn.Close()
+			} else {
+				log.Warning.Printf("RPC call to node at address: %s failed.\n", node2_break_conn_req.Address)
+			}
 
 			node2_conn := getRPCConnection(node1_break_conn_req.Address)
-            if node2_conn != nil {
-                if ok_3 {
-                    err := node2_conn.Call("ServerListener.BreakConnection",
-                        &node1_break_conn_req, &break_conn_reply)
-                    if err != nil {
-                        log.Warning.Println("ServerListener.BreakConnection RPC call failed.\n")
-                    }
-                } else if ok_4 {
-                    err := node2_conn.Call("ClientListener.BreakConnection",
-                        &node1_break_conn_req, &break_conn_reply)
-                    if err != nil {
-                        log.Warning.Println("ClientListener.BreakConnection RPC call failed.\n")
-                    }
-                }
-                node2_conn.Close()
-            } else {
-                log.Warning.Printf("RPC call to node at address: %s failed.\n", node1_break_conn_req.Address)
-            }
+			if node2_conn != nil {
+				if ok_3 {
+					err := node2_conn.Call("ServerListener.BreakConnection",
+						&node2_break_conn_req, &break_conn_reply)
+					if err != nil {
+						log.Warning.Println("ServerListener.BreakConnection RPC call failed.\n")
+					}
+				} else if ok_4 {
+					err := node2_conn.Call("ClientListener.BreakConnection",
+						&node2_break_conn_req, &break_conn_reply)
+					if err != nil {
+						log.Warning.Println("ClientListener.BreakConnection RPC call failed.\n")
+					}
+				}
+				node2_conn.Close()
+			} else {
+				log.Warning.Printf("RPC call to node at address: %s failed.\n", node1_break_conn_req.Address)
+			}
 
 		case "createConnection":
 			log.Info.Println("Executing...", commandSplit)
 
-            // get node IDs
-            nodeId1 := commandSplit[1]
-            nodeId2 := commandSplit[2]
+			// get node IDs
+			nodeId1 := commandSplit[1]
+			nodeId2 := commandSplit[2]
 
-            _, ok_1 := serverNodeMap[nodeId1]
-            _, ok_2 := clientNodeMap[nodeId1]
+			_, ok_1 := serverNodeMap[nodeId1]
+			_, ok_2 := clientNodeMap[nodeId1]
 
-            _, ok_3 := serverNodeMap[nodeId2]
-            _, ok_4 := clientNodeMap[nodeId2]
+			_, ok_3 := serverNodeMap[nodeId2]
+			_, ok_4 := clientNodeMap[nodeId2]
 
-            if !(ok_1 || ok_2) {
-                log.Warning.Printf("Client ID: %s not present in the cluster\n", nodeId1)
-                continue
-            } else if !(ok_3 || ok_4) {
-                log.Warning.Printf("Server ID: %s not present in the cluster\n", nodeId2)
-                continue
-            } else if (ok_2 && ok_4) {
-                log.Warning.Printf("Cannot createConnection between %s and %s. Both are clients.\n", nodeId1, nodeId2)
-                continue
-            }
+			if !(ok_1 || ok_2) {
+				log.Warning.Printf("Client ID: %s not present in the cluster\n", nodeId1)
+				continue
+			} else if !(ok_3 || ok_4) {
+				log.Warning.Printf("Server ID: %s not present in the cluster\n", nodeId2)
+				continue
+			} else if ok_2 && ok_4 {
+				log.Warning.Printf("Cannot createConnection between %s and %s. Both are clients.\n", nodeId1, nodeId2)
+				continue
+			}
 
-            var node1_create_conn_req cc.CreateConnectionRequest
-            var node2_create_conn_req cc.CreateConnectionRequest
-            var create_conn_reply cc.Nothing
+			var node1_create_conn_req cc.CreateConnectionRequest
+			var node2_create_conn_req cc.CreateConnectionRequest
+			var create_conn_reply cc.Nothing
 
-            // fill second node info
-            node1_create_conn_req.Id = nodeId2
-            if ok_3 {
-                node1_create_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId2])
-            }else if ok_4 {
-                node1_create_conn_req.Address = "localhost:" + strconv.Itoa(clientNodeMap[nodeId2])
-            }
+			// fill second node info
+			node1_create_conn_req.Id = nodeId2
+			if ok_3 {
+				node1_create_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId2])
+			} else if ok_4 {
+				node1_create_conn_req.Address = "localhost:" + strconv.Itoa(clientNodeMap[nodeId2])
+			}
 
-            // fill first node info
-            node2_create_conn_req.Id = nodeId1
-            if ok_1 {
-                node2_create_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId1])
-            } else if ok_2 {
-                node2_create_conn_req.Address = "localhost:" + strconv.Itoa(clientNodeMap[nodeId1])
-            }
+			// fill first node info
+			node2_create_conn_req.Id = nodeId1
+			if ok_1 {
+				node2_create_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId1])
+			} else if ok_2 {
+				node2_create_conn_req.Address = "localhost:" + strconv.Itoa(clientNodeMap[nodeId1])
+			}
 
-            node1_conn := getRPCConnection(node2_create_conn_req.Address)
-            if node1_conn != nil {
-                if ok_1 {
-                    err := node1_conn.Call("ServerListener.CreateConnection",
-                        &node1_create_conn_req, &create_conn_reply)
-                    if err != nil {
-                        log.Warning.Println("ServerListener.CreateConnection RPC call failed.\n")
-                    }
-                } else if ok_2 {
-                    err := node1_conn.Call("ClientListener.CreateConnection",
-                        &node1_create_conn_req, &create_conn_reply)
-                    if err != nil {
-                        log.Warning.Println("ClientListener.CreateConnection RPC call failed.\n")
-                    }
-                }
-                node1_conn.Close()
-            } else {
-                log.Warning.Printf("RPC call to node at address: %s failed.\n", node2_create_conn_req.Address)
-            }
+			node1_conn := getRPCConnection(node2_create_conn_req.Address)
+			if node1_conn != nil {
+				if ok_1 {
+					err := node1_conn.Call("ServerListener.CreateConnection",
+						&node1_create_conn_req, &create_conn_reply)
+					if err != nil {
+						log.Warning.Println("ServerListener.CreateConnection RPC call failed.\n")
+					}
+				} else if ok_2 {
+					err := node1_conn.Call("ClientListener.CreateConnection",
+						&node1_create_conn_req, &create_conn_reply)
+					if err != nil {
+						log.Warning.Println("ClientListener.CreateConnection RPC call failed.\n")
+					}
+				}
+				node1_conn.Close()
+			} else {
+				log.Warning.Printf("RPC call to node at address: %s failed.\n", node2_create_conn_req.Address)
+			}
 
-            node2_conn := getRPCConnection(node1_create_conn_req.Address)
-            if node2_conn != nil {
-                if ok_3 {
-                    err := node2_conn.Call("ServerListener.CreateConnection",
-                        &node1_create_conn_req, &create_conn_reply)
-                    if err != nil {
-                        log.Warning.Println("ServerListener.CreateConnection RPC call failed.\n")
-                    }
-                } else if ok_4 {
-                    err := node2_conn.Call("ClientListener.CreateConnection",
-                        &node1_create_conn_req, &create_conn_reply)
-                    if err != nil {
-                        log.Warning.Println("ClientListener.CreateConnection RPC call failed.\n")
-                    }
-                }
-                node2_conn.Close()
-            } else {
-                log.Warning.Printf("RPC call to node at address: %s failed.\n", node1_create_conn_req.Address)
-            }
+			node2_conn := getRPCConnection(node1_create_conn_req.Address)
+			if node2_conn != nil {
+				if ok_3 {
+					err := node2_conn.Call("ServerListener.CreateConnection",
+						&node2_create_conn_req, &create_conn_reply)
+					if err != nil {
+						log.Warning.Println("ServerListener.CreateConnection RPC call failed.\n")
+					}
+				} else if ok_4 {
+					err := node2_conn.Call("ClientListener.CreateConnection",
+						&node2_create_conn_req, &create_conn_reply)
+					if err != nil {
+						log.Warning.Println("ClientListener.CreateConnection RPC call failed.\n")
+					}
+				}
+				node2_conn.Close()
+			} else {
+				log.Warning.Printf("RPC call to node at address: %s failed.\n", node1_create_conn_req.Address)
+			}
 
 		case "stabilize":
 			log.Info.Println("TODO ", commandSplit)
@@ -369,94 +369,94 @@ func main() {
 		case "put":
 			log.Info.Println("Executing...", commandSplit)
 
-            // get client ID
-            client_id := commandSplit[1]
-            // check if client present
-            if _, ok := clientNodeMap[client_id]; ok == false {
-                log.Warning.Printf("Client [ID: %s] is not present in the cluster.\n", client_id)
-                continue
-            }
-            clientPort := clientNodeMap[client_id]
-            rpc_client := getRPCConnection("localhost:" + strconv.Itoa(clientPort))
-            if rpc_client != nil {
-                var put_kv_client_req cc.PutKVClientRequest
-                var put_kv_client_reply cc.Nothing
+			// get client ID
+			client_id := commandSplit[1]
+			// check if client present
+			if _, ok := clientNodeMap[client_id]; ok == false {
+				log.Warning.Printf("Client [ID: %s] is not present in the cluster.\n", client_id)
+				continue
+			}
+			clientPort := clientNodeMap[client_id]
+			rpc_client := getRPCConnection("localhost:" + strconv.Itoa(clientPort))
+			if rpc_client != nil {
+				var put_kv_client_req cc.PutKVClientRequest
+				var put_kv_client_reply cc.Nothing
 
-                put_kv_client_req.Key = commandSplit[2]
-                put_kv_client_req.Value = commandSplit[3]
+				put_kv_client_req.Key = commandSplit[2]
+				put_kv_client_req.Value = commandSplit[3]
 
-                err := rpc_client.Call("ClientListener.PutKVClient",
-                    &put_kv_client_req, &put_kv_client_reply)
+				err := rpc_client.Call("ClientListener.PutKVClient",
+					&put_kv_client_req, &put_kv_client_reply)
 
-                if err != nil {
-                    log.Warning.Printf("PutKeyValueClient request to client [ID: %s] failed [err: %s].", client_id, err)
-                }
-                rpc_client.Close()
-            } else {
-                log.Warning.Println("getRPCConnection returned a nil value.")
-            }
+				if err != nil {
+					log.Warning.Printf("PutKeyValueClient request to client [ID: %s] failed [err: %s].", client_id, err)
+				}
+				rpc_client.Close()
+			} else {
+				log.Warning.Println("getRPCConnection returned a nil value.")
+			}
 
 		case "get":
 			log.Info.Println("Executing...", commandSplit)
 
-            // get client ID
-            client_id := commandSplit[1]
-            // check if client present
-            if _, ok := clientNodeMap[client_id]; ok == false {
-                log.Warning.Printf("Client [ID: %s] is not present in the cluster.\n", client_id)
-                continue
-            }
-            clientPort := clientNodeMap[client_id]
-            rpc_client := getRPCConnection("localhost:" + strconv.Itoa(clientPort))
-            if rpc_client != nil {
-                var get_kv_client_req cc.GetKVClientRequest
-                var get_kv_client_reply cc.GetKVClientReply
+			// get client ID
+			client_id := commandSplit[1]
+			// check if client present
+			if _, ok := clientNodeMap[client_id]; ok == false {
+				log.Warning.Printf("Client [ID: %s] is not present in the cluster.\n", client_id)
+				continue
+			}
+			clientPort := clientNodeMap[client_id]
+			rpc_client := getRPCConnection("localhost:" + strconv.Itoa(clientPort))
+			if rpc_client != nil {
+				var get_kv_client_req cc.GetKVClientRequest
+				var get_kv_client_reply cc.GetKVClientReply
 
-                get_kv_client_req.Key = commandSplit[2]
+				get_kv_client_req.Key = commandSplit[2]
 
-                err := rpc_client.Call("ClientListener.GetKVClient",
-                    &get_kv_client_req, &get_kv_client_reply)
+				err := rpc_client.Call("ClientListener.GetKVClient",
+					&get_kv_client_req, &get_kv_client_reply)
 
-                if err != nil {
-                    log.Warning.Printf("PutKeyValueClient request to client [ID: %s] failed [err: %s].", client_id, err)
-                }
-                rpc_client.Close()
-                log.Info.Printf("Key: %s, Value: %s, Version: %f.\n",
-                    get_kv_client_reply.Key,
-                    get_kv_client_reply.Value,
-                    get_kv_client_reply.Version,
-                )
-            } else {
-                log.Warning.Println("getRPCConnection returned a nil value.")
-            }
+				if err != nil {
+					log.Warning.Printf("PutKeyValueClient request to client [ID: %s] failed [err: %s].", client_id, err)
+				}
+				rpc_client.Close()
+				log.Info.Printf("Key: %s, Value: %s, Version: %f.\n",
+					get_kv_client_reply.Key,
+					get_kv_client_reply.Value,
+					get_kv_client_reply.Version,
+				)
+			} else {
+				log.Warning.Println("getRPCConnection returned a nil value.")
+			}
 
 		case "printMemberList":
-            log.Info.Println("Executing...", commandSplit)
-            // get server ID
-            server_id := commandSplit[1]
-            // check if server present
-            if _, ok := serverNodeMap[server_id]; ok == false {
-                log.Warning.Printf("Server [ID: %s] is not present in the cluster.\n", server_id)
-                continue
-            }
-            serverPort := serverNodeMap[server_id]
-            rpc_client := getRPCConnection("localhost:" + strconv.Itoa(serverPort))
-            if rpc_client != nil {
-                var print_member_list_req cc.Nothing
-                var print_member_list_reply cc.Nothing
+			log.Info.Println("Executing...", commandSplit)
+			// get server ID
+			server_id := commandSplit[1]
+			// check if server present
+			if _, ok := serverNodeMap[server_id]; ok == false {
+				log.Warning.Printf("Server [ID: %s] is not present in the cluster.\n", server_id)
+				continue
+			}
+			serverPort := serverNodeMap[server_id]
+			rpc_client := getRPCConnection("localhost:" + strconv.Itoa(serverPort))
+			if rpc_client != nil {
+				var print_member_list_req cc.Nothing
+				var print_member_list_reply cc.Nothing
 
-                err := rpc_client.Call("ServerListener.PrintMembershipList",
-                    &print_member_list_req, &print_member_list_reply)
+				err := rpc_client.Call("ServerListener.PrintMembershipList",
+					&print_member_list_req, &print_member_list_reply)
 
-                if err != nil {
-                    log.Warning.Printf("PrintMembershipList request to server [ID: %s] failed [err: %s].", server_id, err)
-                }
-                rpc_client.Close()
-            } else {
-                log.Warning.Println("getRPCConnection returned a nil value.")
-            }
+				if err != nil {
+					log.Warning.Printf("PrintMembershipList request to server [ID: %s] failed [err: %s].", server_id, err)
+				}
+				rpc_client.Close()
+			} else {
+				log.Warning.Println("getRPCConnection returned a nil value.")
+			}
 
-        default:
+		default:
 			log.Warning.Println("Command", commandSplit, "not recognized")
 			break
 		}
