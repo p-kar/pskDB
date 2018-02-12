@@ -221,60 +221,54 @@ func main() {
 			var node2_break_conn_req cc.BreakConnectionRequest
 			var break_conn_reply cc.Nothing
 
-			// fill second node info
-			node1_break_conn_req.Id = nodeId2
-			if ok_3 {
+			// between two servers
+			if ok_1 && ok_3 {
+				// info to send to server 1
+				node1_break_conn_req.Id = nodeId2
 				node1_break_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId2])
-			} else if ok_4 {
-				node1_break_conn_req.Address = "localhost:" + strconv.Itoa(clientNodeMap[nodeId2])
-			}
 
-			// fill first node info
-			node2_break_conn_req.Id = nodeId1
-			if ok_1 {
+				// info to send to server 2
+				node2_break_conn_req.Id = nodeId1
 				node2_break_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId1])
-			} else if ok_2 {
-				node2_break_conn_req.Address = "localhost:" + strconv.Itoa(clientNodeMap[nodeId1])
-			}
 
-			node1_conn := getRPCConnection(node2_break_conn_req.Address)
-			if node1_conn != nil {
-				if ok_1 {
-					err := node1_conn.Call("ServerListener.BreakConnection",
+				// make an RPC call to server 1 to send info about server 2
+				node1_conn := getRPCConnection(node2_break_conn_req.Address)
+				err1 := node1_conn.Call("ServerListener.BreakConnection",
 						&node1_break_conn_req, &break_conn_reply)
-					if err != nil {
-						log.Warning.Println("ServerListener.BreakConnection RPC call failed.\n")
-					}
-				} else if ok_2 {
-					err := node1_conn.Call("ClientListener.BreakConnection",
-						&node1_break_conn_req, &break_conn_reply)
-					if err != nil {
-						log.Warning.Println("ClientListener.BreakConnection RPC call failed.\n")
-					}
+				if err1 != nil {
+					log.Warning.Println("ServerListener.BreakConnection RPC call failed.\n")
 				}
 				node1_conn.Close()
-			} else {
-				log.Warning.Printf("RPC call to node at address: %s failed.\n", node2_break_conn_req.Address)
-			}
 
-			node2_conn := getRPCConnection(node1_break_conn_req.Address)
-			if node2_conn != nil {
-				if ok_3 {
-					err := node2_conn.Call("ServerListener.BreakConnection",
+				// make an RPC call to server 2 to send info about server 1
+				node2_conn := getRPCConnection(node1_break_conn_req.Address)
+				err2 := node2_conn.Call("ServerListener.BreakConnection",
 						&node2_break_conn_req, &break_conn_reply)
-					if err != nil {
-						log.Warning.Println("ServerListener.BreakConnection RPC call failed.\n")
-					}
-				} else if ok_4 {
-					err := node2_conn.Call("ClientListener.BreakConnection",
-						&node2_break_conn_req, &break_conn_reply)
-					if err != nil {
-						log.Warning.Println("ClientListener.BreakConnection RPC call failed.\n")
-					}
+				if err2 != nil {
+					log.Warning.Println("ServerListener.BreakConnection RPC call failed.\n")
 				}
 				node2_conn.Close()
 			} else {
-				log.Warning.Printf("RPC call to node at address: %s failed.\n", node1_break_conn_req.Address)
+				// swap IDs so that nodeId1 is server and nodeId2 is client
+				if ok_2 && ok_3 {
+					nodeId1, nodeId2 = nodeId2, nodeId1
+				}
+				// client address
+				clientAddress := "localhost:" + strconv.Itoa(clientNodeMap[nodeId2])
+
+				// info to send to client
+				node2_break_conn_req.Id = nodeId1
+				node2_break_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId1])
+
+				// make an RPC call to client to send info about server
+				node2_conn := getRPCConnection(clientAddress)
+				err := node2_conn.Call("ClientListener.BreakConnection",
+						&node2_break_conn_req, &break_conn_reply)
+				if err != nil {
+					log.Warning.Println("ClientListener.BreakConnection RPC call failed.\n")
+				}
+				node2_conn.Close()
+
 			}
 
 		case "createConnection":
@@ -297,7 +291,7 @@ func main() {
 				log.Warning.Printf("Server ID: %s not present in the cluster\n", nodeId2)
 				continue
 			} else if ok_2 && ok_4 {
-				log.Warning.Printf("Cannot createConnection between %s and %s. Both are clients.\n", nodeId1, nodeId2)
+				log.Warning.Printf("Cannot breakConnection between %s and %s. Both are clients.\n", nodeId1, nodeId2)
 				continue
 			}
 
@@ -305,60 +299,54 @@ func main() {
 			var node2_create_conn_req cc.CreateConnectionRequest
 			var create_conn_reply cc.Nothing
 
-			// fill second node info
-			node1_create_conn_req.Id = nodeId2
-			if ok_3 {
+			// between two servers
+			if ok_1 && ok_3 {
+				// info to send to server 1
+				node1_create_conn_req.Id = nodeId2
 				node1_create_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId2])
-			} else if ok_4 {
-				node1_create_conn_req.Address = "localhost:" + strconv.Itoa(clientNodeMap[nodeId2])
-			}
 
-			// fill first node info
-			node2_create_conn_req.Id = nodeId1
-			if ok_1 {
+				// info to send to server 2
+				node2_create_conn_req.Id = nodeId1
 				node2_create_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId1])
-			} else if ok_2 {
-				node2_create_conn_req.Address = "localhost:" + strconv.Itoa(clientNodeMap[nodeId1])
-			}
 
-			node1_conn := getRPCConnection(node2_create_conn_req.Address)
-			if node1_conn != nil {
-				if ok_1 {
-					err := node1_conn.Call("ServerListener.CreateConnection",
+				// make an RPC call to server 1 to send info about server 2
+				node1_conn := getRPCConnection(node2_create_conn_req.Address)
+				err1 := node1_conn.Call("ServerListener.CreateConnection",
 						&node1_create_conn_req, &create_conn_reply)
-					if err != nil {
-						log.Warning.Println("ServerListener.CreateConnection RPC call failed.\n")
-					}
-				} else if ok_2 {
-					err := node1_conn.Call("ClientListener.CreateConnection",
-						&node1_create_conn_req, &create_conn_reply)
-					if err != nil {
-						log.Warning.Println("ClientListener.CreateConnection RPC call failed.\n")
-					}
+				if err1 != nil {
+					log.Warning.Println("ServerListener.CreateConnection RPC call failed.\n")
 				}
 				node1_conn.Close()
-			} else {
-				log.Warning.Printf("RPC call to node at address: %s failed.\n", node2_create_conn_req.Address)
-			}
 
-			node2_conn := getRPCConnection(node1_create_conn_req.Address)
-			if node2_conn != nil {
-				if ok_3 {
-					err := node2_conn.Call("ServerListener.CreateConnection",
+				// make an RPC call to server 2 to send info about server 1
+				node2_conn := getRPCConnection(node1_create_conn_req.Address)
+				err2 := node2_conn.Call("ServerListener.CreateConnection",
 						&node2_create_conn_req, &create_conn_reply)
-					if err != nil {
-						log.Warning.Println("ServerListener.CreateConnection RPC call failed.\n")
-					}
-				} else if ok_4 {
-					err := node2_conn.Call("ClientListener.CreateConnection",
-						&node2_create_conn_req, &create_conn_reply)
-					if err != nil {
-						log.Warning.Println("ClientListener.CreateConnection RPC call failed.\n")
-					}
+				if err2 != nil {
+					log.Warning.Println("ServerListener.CreateConnection RPC call failed.\n")
 				}
 				node2_conn.Close()
 			} else {
-				log.Warning.Printf("RPC call to node at address: %s failed.\n", node1_create_conn_req.Address)
+				// swap IDs so that nodeId1 is server and nodeId2 is client
+				if ok_2 && ok_3 {
+					nodeId1, nodeId2 = nodeId2, nodeId1
+				}
+				// client address
+				clientAddress := "localhost:" + strconv.Itoa(clientNodeMap[nodeId2])
+
+				// info to send to client
+				node2_create_conn_req.Id = nodeId1
+				node2_create_conn_req.Address = "localhost:" + strconv.Itoa(serverNodeMap[nodeId1])
+
+				// make an RPC call to client to send info about server
+				node2_conn := getRPCConnection(clientAddress)
+				err := node2_conn.Call("ClientListener.CreateConnection",
+						&node2_create_conn_req, &create_conn_reply)
+				if err != nil {
+					log.Warning.Println("ClientListener.CreateConnection RPC call failed.\n")
+				}
+				node2_conn.Close()
+
 			}
 
 		case "stabilize":
