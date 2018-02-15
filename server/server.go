@@ -2,17 +2,17 @@ package main
 
 import (
     // "fmt"
-    "os"
-    "net"
+    cc "../common"
+    "errors"
     "math"
+    "math/rand"
+    "net"
+    "net/rpc"
+    "os"
     "sort"
+    "strconv"
     "sync"
     "time"
-    "errors"
-    "strconv"
-    "net/rpc"
-    "math/rand"
-    cc "../common"
 )
 
 // global map that maintains info about all alive servers
@@ -41,7 +41,7 @@ var blacklistMap = make(map[string]bool)
 var mutex_blacklist_map = &sync.Mutex{}
 
 // map for key value store
-var keyValueMap = make(map[string] *KeyValueInfo)
+var keyValueMap = make(map[string]*KeyValueInfo)
 
 // mutex for keyValueMap
 var mutex_key_value_map = &sync.Mutex{}
@@ -204,8 +204,8 @@ func (sl *ServerListener) HeartbeatNotification(
         currServerInfo.Lamport_Timestamp = math.Max(
             sender_lamport_time,
             currServerInfo.Lamport_Timestamp,
-            ) + 1.0
-        
+        ) + 1.0
+
         // skip if sid matches current server id
         if sid == currServerInfo.Id {
             continue
@@ -342,7 +342,7 @@ func (sl *ServerListener) PutKVServer (
 }
 
 // read a <K,V> pair given K from the key value store
-func (sl *ServerListener) GetKVServer (
+func (sl *ServerListener) GetKVServer(
     req *cc.GetKVServerRequest, reply *cc.GetKVServerReply) error {
     // acquire lock on key value store
     mutex_key_value_map.Lock()
@@ -467,15 +467,15 @@ func main() {
         os.Stdout, os.Stdout, os.Stderr, os.Stderr)
 
     currServerInfo = ServerInfo{
-        Id:                   os.Args[1],
-        IP_address:           "localhost",
-        Port_num:             os.Args[2],
-        Address:              "localhost:" + os.Args[2],
-        Heartbeat_seqnum:     1,
-        Timestamp:            time.Now(),
-        Alive:                true,
-        Suspicion:            false,
-        Lamport_Timestamp:    GetLamportTimestampFromSeqnum(1, os.Args[1]),
+        Id:                os.Args[1],
+        IP_address:        "localhost",
+        Port_num:          os.Args[2],
+        Address:           "localhost:" + os.Args[2],
+        Heartbeat_seqnum:  1,
+        Timestamp:         time.Now(),
+        Alive:             true,
+        Suspicion:         false,
+        Lamport_Timestamp: GetLamportTimestampFromSeqnum(1, os.Args[1]),
     }
 
     // connect to the cluster
