@@ -86,3 +86,14 @@ type KeyValueInfo struct {
     // lamport timestamp when this <K,V> pair was updated
     Version float64
 }
+
+// declares a new KeyValueInfo object in heap and returns a pointer
+func NewKeyValueInfoHeap (info KeyValueInfo) *KeyValueInfo {
+    new_key_value := new(KeyValueInfo)
+
+    new_key_value.Key = info.Key
+    new_key_value.Value = info.Value
+    new_key_value.Version = info.Version
+
+    return new_key_value
+}

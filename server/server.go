@@ -46,6 +46,12 @@ var keyValueMap = make(map[string] *KeyValueInfo)
 // mutex for keyValueMap
 var mutex_key_value_map = &sync.Mutex{}
 
+// write log for updates
+var writeLog []*KeyValueInfo
+
+// mutex for writeLog
+var mutex_write_log = &sync.Mutex{}
+
 // get RPC client object given an IP address - if not in the blacklist
 func getRPCConnection(address string) *rpc.Client {
 
@@ -78,6 +84,14 @@ func GetLamportTimestamp() float64 {
     mutex_curr_server_info.Lock()
     defer mutex_curr_server_info.Unlock()
     return currServerInfo.Lamport_Timestamp
+}
+
+// append write to the writeLog, creates a deep copy of the info
+func AddToWriteLog(info *KeyValueInfo) {
+    mutex_write_log.Lock()
+    defer mutex_write_log.Unlock()
+    new_update := NewKeyValueInfoHeap(*info)
+    writeLog = append(writeLog, new_update)
 }
 
 // Atomically get and increment Lamport's timestamp (needed for reads and writes)
@@ -157,7 +171,7 @@ func (sl *ServerListener) NewServerNotification(
         return nil
     }
     // if the same as current server do nothing
-    if currServerInfo.Id == req.NewServerInfoHeap.Id {
+    if currServerInfo.Id == req.NewServerInfo.Id {
         *reply = false
         return nil
     }
@@ -315,11 +329,13 @@ func (sl *ServerListener) PutKVServer (
         keyValueMap[req.Key].Key = req.Key
         keyValueMap[req.Key].Value = req.Value
         keyValueMap[req.Key].Version = GetAndIncrementLamportTimestamp()
+        AddToWriteLog(keyValueMap[req.Key])
     } else {
         curr_lamport_time := GetAndIncrementLamportTimestamp()
         if keyValueMap[req.Key].Version < curr_lamport_time {
             keyValueMap[req.Key].Value = req.Value
             keyValueMap[req.Key].Version = curr_lamport_time
+            AddToWriteLog(keyValueMap[req.Key])
         }
     }
     return nil
