@@ -14,6 +14,9 @@ var log *cc.Logger
 // information about the client
 var currClientInfo ClientInfo
 
+// maintain state about previous reads/writes
+var keyVersionInfo = make(map[string] float64)
+
 // get RPC client object given an IP address
 func getRPCConnection(address string) *rpc.Client {
     if currClientInfo.Server_Id == "-1" {
@@ -58,7 +61,7 @@ func (cl *ClientListener) PutKVClient(
     rpc_client := getRPCConnection(currClientInfo.Server_Address)
     if rpc_client != nil {
         var put_kv_server_req cc.PutKVServerRequest
-        var put_kv_server_reply cc.Nothing
+        var put_kv_server_reply cc.PutKVServerReply
 
         put_kv_server_req.Key = req.Key
         put_kv_server_req.Value = req.Value
@@ -68,6 +71,7 @@ func (cl *ClientListener) PutKVClient(
         if err != nil {
             return errors.New("RPC call to server returned an error.")
         }
+        keyVersionInfo[put_kv_server_reply.Key] = put_kv_server_reply.Version
         return nil
     }
     return errors.New("Unable to RPC dial server.")
@@ -83,6 +87,11 @@ func (cl *ClientListener) GetKVClient(
         var get_kv_server_reply cc.GetKVServerReply
 
         get_kv_server_req.Key = req.Key
+        if version, ok := keyVersionInfo[req.Key]; ok == true {
+            get_kv_server_req.Version = version
+        } else {
+            get_kv_server_req.Version = -1 // doesnt care which version it receives
+        }
 
         err := rpc_client.Call("ServerListener.GetKVServer",
             &get_kv_server_req, &get_kv_server_reply)
@@ -92,6 +101,9 @@ func (cl *ClientListener) GetKVClient(
         reply.Key = get_kv_server_reply.Key
         reply.Value = get_kv_server_reply.Value
         reply.Version = get_kv_server_reply.Version
+        if get_kv_server_reply.Value != "ERR_DEP" {
+            keyVersionInfo[reply.Key] = get_kv_server_reply.Version
+        }
         return nil
     }
     return errors.New("Unable to RPC dial server.")

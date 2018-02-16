@@ -37,6 +37,15 @@ type PutKVServerRequest struct {
     Value string
 }
 
+type PutKVServerReply struct {
+    // key
+    Key string
+    // value to be stored in the key value pair
+    Value string
+    // lamport timestamp for this succeded request
+    Version float64
+}
+
 type GetKVClientRequest struct {
     // key
     Key string
@@ -54,6 +63,8 @@ type GetKVClientReply struct {
 type GetKVServerRequest struct {
     // key
     Key string
+    // minimum version of the key required
+    Version float64
 }
 
 type GetKVServerReply struct {

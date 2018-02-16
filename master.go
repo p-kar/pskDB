@@ -291,7 +291,7 @@ func main() {
                 log.Warning.Printf("Server ID: %s not present in the cluster\n", nodeId2)
                 continue
             } else if ok_2 && ok_4 {
-                log.Warning.Printf("Cannot breakConnection between %s and %s. Both are clients.\n", nodeId1, nodeId2)
+                log.Warning.Printf("Cannot CreateConnection between %s and %s. Both are clients.\n", nodeId1, nodeId2)
                 continue
             }
 
@@ -406,7 +406,7 @@ func main() {
                     &get_kv_client_req, &get_kv_client_reply)
 
                 if err != nil {
-                    log.Warning.Printf("PutKeyValueClient request to client [ID: %s] failed [err: %s].", client_id, err)
+                    log.Warning.Printf("GetKeyValueClient request to client [ID: %s] failed [err: %s].", client_id, err)
                 }
                 rpc_client.Close()
                 log.Info.Printf("Key: %s, Value: %s, Version: %f.\n",

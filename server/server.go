@@ -320,7 +320,7 @@ func (sl *ServerListener) KillServer(
 
 // write a <K,V> pair in the key value store
 func (sl *ServerListener) PutKVServer (
-    req *cc.PutKVServerRequest, reply *cc.Nothing) error {
+    req *cc.PutKVServerRequest, reply *cc.PutKVServerReply) error {
     // acquire lock on key value store
     mutex_key_value_map.Lock()
     defer mutex_key_value_map.Unlock()
@@ -338,6 +338,9 @@ func (sl *ServerListener) PutKVServer (
             AddToWriteLog(keyValueMap[req.Key])
         }
     }
+    reply.Key = keyValueMap[req.Key].Key
+    reply.Value = keyValueMap[req.Key].Value
+    reply.Version = keyValueMap[req.Key].Version
     return nil
 }
 
@@ -356,6 +359,9 @@ func (sl *ServerListener) GetKVServer(
         reply.Key = val.Key
         reply.Value = val.Value
         reply.Version = val.Version
+        if val.Version < req.Version {
+            reply.Value = "ERR_DEP"
+        }
     }
     return nil
 }
