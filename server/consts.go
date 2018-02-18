@@ -8,4 +8,6 @@ const (
     GOSSIP_HEARTBEAT_FANOUT = 2
     // Time interval in ms after which the failure detection algorithm starts
     GOSSIP_HEARTBEAT_TIMEOUT = 1000
+    // Stabilize round interval
+    STABILIZE_ROUND_INTERVAL = 100
 )

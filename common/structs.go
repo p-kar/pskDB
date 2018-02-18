@@ -75,3 +75,8 @@ type GetKVServerReply struct {
     // lamport timestamp for this value
     Version float64
 }
+
+type StabilizeRequest struct {
+    // number of rounds to perform the stabilization
+    Rounds int
+}

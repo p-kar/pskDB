@@ -87,6 +87,11 @@ type KeyValueInfo struct {
     Version float64
 }
 
+type SendKVDataRequest struct {
+    // entire Key value data
+    KeyValueMap map[string]*KeyValueInfo
+}
+
 // declares a new KeyValueInfo object in heap and returns a pointer
 func NewKeyValueInfoHeap (info KeyValueInfo) *KeyValueInfo {
     new_key_value := new(KeyValueInfo)
