@@ -35,6 +35,8 @@ type PutKVServerRequest struct {
     Key string
     // value to be stored in the key value pair
     Value string
+    // version of the last write/read on the key by the client
+    Version float64
 }
 
 type PutKVServerReply struct {

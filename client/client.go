@@ -65,6 +65,11 @@ func (cl *ClientListener) PutKVClient(
 
         put_kv_server_req.Key = req.Key
         put_kv_server_req.Value = req.Value
+        if version, ok := keyVersionInfo[req.Key]; ok == true {
+            put_kv_server_req.Version = version
+        } else {
+            put_kv_server_req.Version = -1 // doesnt care which version it receives
+        }
 
         err := rpc_client.Call("ServerListener.PutKVServer",
             &put_kv_server_req, &put_kv_server_reply)

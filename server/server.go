@@ -103,6 +103,19 @@ func GetAndIncrementLamportTimestamp() float64 {
     return curr_lamport_time
 }
 
+// Atomically increment the lamport timestamp based on a pivot 
+// (use only when put request with later timestamp is received)
+func ConditionalIncrementLamportTimestamp(timestamp_pivot float64) {
+    mutex_curr_server_info.Lock()
+    defer mutex_curr_server_info.Unlock()
+    difference := currServerInfo.Lamport_Timestamp + 1.0 - req.Version
+    if difference > 0 {
+        currServerInfo.Lamport_Timestamp += 1.0
+    } else {
+        currServerInfo.Lamport_Timestamp += (1.0 + math.Ceil(difference))
+    }
+    return currServerInfo.Lamport_Timestamp
+}
 
 func startHeartbeats() {
     for {

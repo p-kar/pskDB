@@ -240,10 +240,20 @@ func (sl *ServerListener) PutKVServer (
         keyValueMap[req.Key] = new(KeyValueInfo)
         keyValueMap[req.Key].Key = req.Key
         keyValueMap[req.Key].Value = req.Value
-        keyValueMap[req.Key].Version = GetAndIncrementLamportTimestamp()
+        if req.Version == -1 {   
+            keyValueMap[req.Key].Version = GetAndIncrementLamportTimestamp()
+        } else {
+            keyValueMap[req.Key].Version = ConditionalIncrementLamportTimestamp(req.Version)
+        }
         AddToWriteLog(keyValueMap[req.Key])
     } else {
-        curr_lamport_time := GetAndIncrementLamportTimestamp()
+        var curr_lamport_time float64
+        if req.Version == -1 {
+            curr_lamport_time := GetAndIncrementLamportTimestamp()
+        } else {
+            curr_lamport_time := ConditionalIncrementLamportTimestamp(req.Version)
+            
+        }
         if keyValueMap[req.Key].Version < curr_lamport_time {
             keyValueMap[req.Key].Value = req.Value
             keyValueMap[req.Key].Version = curr_lamport_time
