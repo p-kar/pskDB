@@ -349,6 +349,7 @@ func (sl *ServerListener) Stabilize(
             var send_key_data_reply cc.Nothing
             err := client.Call("ServerListener.SendKVData", 
                 &send_key_data_req, &send_key_data_reply)
+            client.Close()
             if err != nil {
                 // [TODO] figure out what to do in this case
                 continue

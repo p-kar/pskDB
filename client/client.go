@@ -59,6 +59,7 @@ func (cl *ClientListener) BreakConnection(
 func (cl *ClientListener) PutKVClient(
     req* cc.PutKVClientRequest, reply *cc.Nothing) error {
     rpc_client := getRPCConnection(currClientInfo.Server_Address)
+    defer rpc_client.Close()
     if rpc_client != nil {
         var put_kv_server_req cc.PutKVServerRequest
         var put_kv_server_reply cc.PutKVServerReply
@@ -87,6 +88,7 @@ func (cl *ClientListener) PutKVClient(
 func (cl *ClientListener) GetKVClient(
     req* cc.GetKVClientRequest, reply *cc.GetKVClientReply) error {
     rpc_client := getRPCConnection(currClientInfo.Server_Address)
+    defer rpc_client.Close()
     if rpc_client != nil {
         var get_kv_server_req cc.GetKVServerRequest
         var get_kv_server_reply cc.GetKVServerReply
