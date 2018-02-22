@@ -105,10 +105,10 @@ func GetAndIncrementLamportTimestamp() float64 {
 
 // Atomically increment the lamport timestamp based on a pivot 
 // (use only when put request with later timestamp is received)
-func ConditionalIncrementLamportTimestamp(timestamp_pivot float64) {
+func ConditionalIncrementLamportTimestamp(timestamp_pivot float64) float64 {
     mutex_curr_server_info.Lock()
     defer mutex_curr_server_info.Unlock()
-    difference := currServerInfo.Lamport_Timestamp + 1.0 - req.Version
+    difference := currServerInfo.Lamport_Timestamp + 1.0 - timestamp_pivot
     if difference > 0 {
         currServerInfo.Lamport_Timestamp += 1.0
     } else {

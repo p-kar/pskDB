@@ -249,9 +249,9 @@ func (sl *ServerListener) PutKVServer (
     } else {
         var curr_lamport_time float64
         if req.Version == -1 {
-            curr_lamport_time := GetAndIncrementLamportTimestamp()
+            curr_lamport_time = GetAndIncrementLamportTimestamp()
         } else {
-            curr_lamport_time := ConditionalIncrementLamportTimestamp(req.Version)
+            curr_lamport_time = ConditionalIncrementLamportTimestamp(req.Version)
             
         }
         if keyValueMap[req.Key].Version < curr_lamport_time {
@@ -311,6 +311,7 @@ func (sl *ServerListener) PingServer(
 func (sl *ServerListener) Stabilize(
     req *cc.StabilizeRequest, reply *cc.Nothing) error {
 
+    log.Info.Println("Running stabilize....")
     // perform stabilize rounds    
     for i := 1; i<=req.Rounds; i++ {
         mutex_server_map.Lock()
@@ -321,11 +322,13 @@ func (sl *ServerListener) Stabilize(
             }
 
             // send data to other server
-            var send_key_data_req SendKVDataRequest
-            send_key_data_req.KeyValueMap = make(map[string]*KeyValueInfo)
+            // assuming Id of the server doesn't change so not using Mutex
+            send_key_data_req := SendKVDataRequest{
+                                KeyValueMap : make(map[string]KeyValueInfo),
+                                ServerId : currServerInfo.Id}
             mutex_key_value_map.Lock()
             for key, value := range keyValueMap {
-                send_key_data_req.KeyValueMap[key] = value
+                send_key_data_req.KeyValueMap[key] = *value
             }
             mutex_key_value_map.Unlock()
 
@@ -350,21 +353,15 @@ func (sl *ServerListener) SendKVData(
     req *SendKVDataRequest, reply *cc.Nothing) error {
     mutex_key_value_map.Lock()
     defer mutex_key_value_map.Unlock()
-    // update value if received new value
-    for key, value := range keyValueMap {
-        if _, ok := req.KeyValueMap[key]; ok == true {
-            if req.KeyValueMap[key].Version > value.Version {
+    // add/update keys from received data
+    for key := range req.KeyValueMap {
+        if _, ok := keyValueMap[key]; ok == false {
+            keyValueMap[key] = NewKeyValueInfoHeap(req.KeyValueMap[key])
+        } else {
+            if req.KeyValueMap[key].Version > keyValueMap[key].Version {
                 keyValueMap[key].Value = req.KeyValueMap[key].Value
                 keyValueMap[key].Version = req.KeyValueMap[key].Version
             }
-        }
-    }
-    // add new keys from received data if not present
-    for key := range req.KeyValueMap {
-        if _, ok := keyValueMap[key]; ok == false {
-            keyValueMap[key].Key = req.KeyValueMap[key].Key
-            keyValueMap[key].Value = req.KeyValueMap[key].Value
-            keyValueMap[key].Version = req.KeyValueMap[key].Version
         }
     }
     return nil

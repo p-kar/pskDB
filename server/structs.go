@@ -89,7 +89,9 @@ type KeyValueInfo struct {
 
 type SendKVDataRequest struct {
     // entire Key value data
-    KeyValueMap map[string]*KeyValueInfo
+    KeyValueMap map[string]KeyValueInfo
+    // source server Id
+    ServerId string
 }
 
 // declares a new KeyValueInfo object in heap and returns a pointer

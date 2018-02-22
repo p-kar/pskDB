@@ -355,18 +355,18 @@ func main() {
             var num_nodes = len(serverNodeMap)
             var errChanMap = make(map[string] chan error)
             for nodeId, serverPort := range serverNodeMap {
-                go func() {
-                    rpc_client := getRPCConnection("localhost:" + strconv.Itoa(serverPort))
+                go func(Id string, port int) {
+                    rpc_client := getRPCConnection("localhost:" + strconv.Itoa(port))
                     if rpc_client != nil {
                         var req cc.StabilizeRequest
                         req.Rounds = num_nodes - 1 // [TODO] can optimize here
                         var reply cc.Nothing
-                        errChanMap[nodeId] = make(chan error)
-                        errChanMap[nodeId] <- rpc_client.Call("ServerListener.Stabilize", &req, &reply)
+                        errChanMap[Id] = make(chan error)
+                        errChanMap[Id] <- rpc_client.Call("ServerListener.Stabilize", &req, &reply)
                     } else {
                         log.Warning.Println("getRPCConnection returned a nil value.")
                     }
-                }()
+                }(nodeId, serverPort)
             }
             // [TODO] complete stabilize
             // wait time for stabilize to complete
