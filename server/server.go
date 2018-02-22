@@ -275,8 +275,8 @@ func main() {
                     serverMap[reply.Id] = NewServerInfoHeap(reply.Info)
                     break
                 }
-                time.Sleep(CONNECT_SERVER_REQUEST_DELAY * time.Millisecond)
             }
+            time.Sleep(CONNECT_SERVER_REQUEST_DELAY * time.Millisecond)
             retries += 1
         }
     }
