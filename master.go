@@ -1,7 +1,7 @@
 package main
 
 import (
-    cc "pskDB/common"
+    cc "./common"
     "bufio"
     "net/rpc"
     "os"

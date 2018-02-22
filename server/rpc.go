@@ -1,17 +1,9 @@
 package main
 
 import (
-    // "fmt"
-    cc "pskDB/common"
+    cc "../common"
     "errors"
     "math"
-    // "math/rand"
-    // "net"
-    // "net/rpc"
-    // "os"
-    // "sort"
-    // "strconv"
-    // "sync"
     "time"
 )
 
@@ -92,6 +84,25 @@ func (sl *ServerListener) NewServerNotification(
         req.NewServerInfo.Port_num, req.Id)
     serverMap[req.NewServerInfo.Id] = NewServerInfoHeap(req.NewServerInfo)
     *reply = false
+    return nil
+}
+
+// used to get the server's ServerInfo structure
+func (sl *ServerListener) GetServerInfo(
+    req *cc.Nothing, reply *GetServerInfoReply) error {
+    mutex_curr_server_info.Lock()
+    defer mutex_curr_server_info.Unlock()
+    reply.Id = currServerInfo.Id
+    // copy structure contents
+    reply.Info.Id = currServerInfo.Id
+    reply.Info.IP_address = currServerInfo.IP_address
+    reply.Info.Address = currServerInfo.Address
+    reply.Info.Port_num = currServerInfo.Port_num
+    reply.Info.Heartbeat_seqnum = currServerInfo.Heartbeat_seqnum
+    reply.Info.Timestamp = time.Now()
+    reply.Info.Alive = currServerInfo.Alive
+    reply.Info.Suspicion = currServerInfo.Suspicion
+    reply.Info.Lamport_Timestamp = currServerInfo.Lamport_Timestamp
     return nil
 }
 
@@ -293,7 +304,10 @@ func (sl *ServerListener) PrintMembershipList(
     req *cc.Nothing, reply *cc.Nothing) error {
     mutex_server_map.Lock()
     defer mutex_server_map.Unlock()
-    var member_list string
+    // acquire lock on currServerInfo
+    mutex_curr_server_info.Lock()
+    defer mutex_curr_server_info.Unlock()
+    member_list := "( *ID: " + currServerInfo.Id + ", Port: " + currServerInfo.Port_num + " ) "
     for id, serv_info := range serverMap {
         member_list = member_list + "( ID: " + id + ", Port: " + serv_info.Port_num + " ) "
     }

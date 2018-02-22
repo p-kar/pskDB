@@ -59,6 +59,14 @@ type JoinClusterAsServerReply struct {
     ServerInfoList []ServerInfo
 }
 
+// the reply returns the ServerInfo structure for replying server
+type GetServerInfoReply struct {
+    // Id of the replying server
+    Id string
+    // ServerInfo structure of the replying server
+    Info ServerInfo
+}
+
 type NewServerNotificationRequest struct {
     // unique identifier of the server that sends the notification
     Id string

@@ -5,7 +5,7 @@ import (
     "net"
     "errors"
     "net/rpc"
-    cc "pskDB/common"
+    cc "../common"
 )
 
 // Logging instance

@@ -1,9 +1,7 @@
 package main
 
 import (
-    // "fmt"
-    cc "pskDB/common"
-    // "errors"
+    cc "../common"
     "math"
     "math/rand"
     "net"
@@ -219,8 +217,8 @@ func main() {
     // connect to the cluster
     if len(os.Args) > 3 {
         for i := 3; i < len(os.Args); i++ {
-            client := getRPCConnection("localhost:" + os.Args[i])
-            if client == nil {
+            rpc_client := getRPCConnection("localhost:" + os.Args[i])
+            if rpc_client == nil {
                 continue
             }
             join_cluster_req := JoinClusterAsServerRequest{
@@ -229,13 +227,13 @@ func main() {
                 Port_num:   currServerInfo.Port_num,
             }
             var join_cluster_reply JoinClusterAsServerReply
-            err := client.Call("ServerListener.JoinClusterAsServer",
+            err := rpc_client.Call("ServerListener.JoinClusterAsServer",
                 &join_cluster_req, &join_cluster_reply)
+            rpc_client.Close()
             if err != nil {
                 log.Warning.Printf("RPC call to join server at port number: %s failed.\n", os.Args[i])
                 continue
             }
-            client.Close()
             mutex_server_map.Lock()
             for ii := 0; ii < len(join_cluster_reply.ServerInfoList); ii++ {
                 sid := join_cluster_reply.ServerInfoList[ii].Id
@@ -247,6 +245,42 @@ func main() {
             break
         }
     }
+
+    // connect to partitioned nodes
+    mutex_server_map.Lock()
+    for i := 3; i < len(os.Args); i++ {
+        already_present := false
+        // check if this port num is already present in the member list
+        for _, serv_info := range serverMap {
+            if serv_info.Port_num != os.Args[i] {
+                continue
+            }
+            already_present = true
+            break
+        }
+        if already_present == true {
+            continue
+        }
+        var retries = 0
+        for retries < CONNECT_SERVER_NUM_RETRIES {
+            rpc_client := getRPCConnection("localhost:" + os.Args[i])
+            if rpc_client != nil {
+                var req cc.Nothing
+                var reply GetServerInfoReply
+                err := rpc_client.Call("ServerListener.GetServerInfo", &req, &reply)
+                rpc_client.Close()
+                if err == nil {
+                    log.Info.Printf("Found a new server [ID: %s, Port_num: %s].\n",
+                        reply.Id, reply.Info.Port_num)
+                    serverMap[reply.Id] = NewServerInfoHeap(reply.Info)
+                    break
+                }
+                time.Sleep(CONNECT_SERVER_REQUEST_DELAY * time.Millisecond)
+            }
+            retries += 1
+        }
+    }
+    mutex_server_map.Unlock()
 
     server_addr, err := net.ResolveTCPAddr("tcp",
         currServerInfo.IP_address+":"+currServerInfo.Port_num)
