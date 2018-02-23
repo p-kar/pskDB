@@ -82,3 +82,8 @@ type StabilizeRequest struct {
     // number of rounds to perform the stabilization
     Rounds int
 }
+
+type StabilizeReply struct {
+    // id of the server replying to the master
+    Id string
+}

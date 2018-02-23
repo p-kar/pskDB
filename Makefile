@@ -33,5 +33,4 @@ clean:
 	rm -rf clientNode
 
 cleanup:
-	-pkill clientNode
-	-pkill serverNode
+	@-pkill serverNode clientNode | true
