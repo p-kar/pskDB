@@ -18,7 +18,7 @@ color:
 		go get github.com/fatih/color; \
 	fi
 
-master: master.go
+master: master.go $(COMMONSRC)
 	go build -o master
 	
 serverNode: $(SERVERSRC) $(COMMONSRC)
@@ -33,4 +33,6 @@ clean:
 	rm -rf clientNode
 
 cleanup:
+	@echo -n 'Killing stray server and client processes... '
 	@-pkill serverNode clientNode | true
+	@echo 'done.'
