@@ -34,5 +34,6 @@ clean:
 
 cleanup:
 	@echo -n 'Killing stray server and client processes... '
-	@-pkill serverNode clientNode | true
+	@-pkill serverNode | true
+	@-pkill clientNode | true
 	@echo 'done.'
