@@ -3,6 +3,9 @@
 *.dll
 *.so
 *.dylib
+master
+clientNode
+serverNode
 
 # Test binary, build with `go test -c`
 *.test
@@ -16,3 +19,6 @@
 # Mac related files
 .DS_Store
 
+# color for log
+pkg
+src

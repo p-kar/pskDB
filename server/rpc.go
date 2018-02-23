@@ -342,9 +342,13 @@ func (sl *ServerListener) PingServer(
 
 // RPC call for master to stabilize the system
 func (sl *ServerListener) Stabilize(
-    req *cc.StabilizeRequest, reply *cc.Nothing) error {
+    req *cc.StabilizeRequest, reply *cc.StabilizeReply) error {
 
     log.Info.Println("Running stabilize....")
+    reply.Id = currServerInfo.Id
+    roundTicker := time.NewTicker(STABILIZE_ROUND_INTERVAL * time.Millisecond)
+    defer roundTicker.Stop()
+    
     // perform stabilize rounds    
     for i := 1; i<=req.Rounds; i++ {
         mutex_server_map.Lock()
@@ -380,8 +384,7 @@ func (sl *ServerListener) Stabilize(
 
         }
         mutex_server_map.Unlock()
-
-        time.Sleep(STABILIZE_ROUND_INTERVAL * time.Millisecond)
+        <-roundTicker.C
     }
     return nil
 }
