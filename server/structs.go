@@ -2,6 +2,7 @@ package main
 
 import (
     "time"
+    "net/rpc"
 )
 
 type ServerInfo struct {
@@ -25,6 +26,8 @@ type ServerInfo struct {
     Suspicion bool
     // Lamport's logical timestamp [ time.pid ]
     Lamport_Timestamp float64
+    // [Optional] only required for server map
+    rpcClient *rpc.Client
 }
 
 // declares a NewServerInfo object in heap and returns pointer
@@ -40,6 +43,7 @@ func NewServerInfoHeap(serv_info ServerInfo) *ServerInfo {
     new_server_info.Alive = serv_info.Alive
     new_server_info.Suspicion = serv_info.Suspicion
     new_server_info.Lamport_Timestamp = serv_info.Lamport_Timestamp
+    new_server_info.rpcClient = nil
 
     return new_server_info
 }
