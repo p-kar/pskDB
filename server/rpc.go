@@ -1,10 +1,11 @@
 package main
 
 import (
-    cc "../common"
-    "errors"
+    "fmt"
     "math"
     "time"
+    "errors"
+    cc "../common"
 )
 
 type ServerListener int
@@ -405,5 +406,22 @@ func (sl *ServerListener) SendKVData(
             }
         }
     }
+    return nil
+}
+
+// RPC call to print the whole KV store in this replica
+func (sl *ServerListener) PrintStore(
+    req *cc.Nothing, reply *cc.Nothing) error {
+    mutex_curr_server_info.Lock()
+    sid := currServerInfo.Id
+    mutex_curr_server_info.Unlock()
+    mutex_key_value_map.Lock()
+    defer mutex_key_value_map.Unlock()
+    // add/update keys from received data
+    fmt.Printf("\nServer %s KV Store\n", sid)
+    for key, value := range keyValueMap {
+        fmt.Printf("%s\t:\t%s\n", key, value.Value)
+    }
+    fmt.Printf("\n")
     return nil
 }

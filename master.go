@@ -394,7 +394,31 @@ func main() {
                 }
             }
         case "printStore":
-            log.Info.Println("TODO ", commandSplit)
+            log.Info.Println("Executing...", commandSplit)
+
+            // get server ID
+            server_id := commandSplit[1]
+            // check if client present
+            if _, ok := serverNodeMap[server_id]; ok == false {
+                log.Warning.Printf("Server [ID: %s] is not present in the cluster.\n", server_id)
+                continue
+            }
+            serverPort := serverNodeMap[server_id]
+            rpc_client := getRPCConnection("localhost:" + strconv.Itoa(serverPort))
+            if rpc_client != nil {
+                var req cc.Nothing
+                var reply cc.Nothing
+
+                err := rpc_client.Call("ServerListener.PrintStore",
+                    &req, &reply)
+
+                if err != nil {
+                    log.Warning.Printf("PrintStore request to server [ID: %s] failed [err: %s].", server_id, err)
+                }
+                rpc_client.Close()
+            } else {
+                log.Warning.Println("getRPCConnection returned a nil value.")
+            }
 
         case "put":
             log.Info.Println("Executing...", commandSplit)
