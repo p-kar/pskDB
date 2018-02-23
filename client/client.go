@@ -121,7 +121,7 @@ func (cl *ClientListener) GetKVClient(
         reply.Key = get_kv_server_reply.Key
         reply.Value = get_kv_server_reply.Value
         reply.Version = get_kv_server_reply.Version
-        if get_kv_server_reply.Value != "ERR_DEP" {
+        if get_kv_server_reply.Value != "ERR_DEP" && get_kv_server_reply.Value != "ERR_KEY" {
             keyVersionInfo[reply.Key] = get_kv_server_reply.Version
         }
         return nil
