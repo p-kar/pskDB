@@ -11,7 +11,6 @@ type CreateConnectionRequest struct {
     // unique id of the server/client
     Id string
     // address of the server / client 
-    // needed for client to connect to server
     Address string
 }
 
@@ -81,4 +80,9 @@ type GetKVServerReply struct {
 type StabilizeRequest struct {
     // number of rounds to perform the stabilization
     Rounds int
+}
+
+type StabilizeReply struct {
+    // id of the server replying to the master
+    Id string
 }

@@ -17,6 +17,9 @@ var currClientInfo ClientInfo
 // maintain state about previous reads/writes
 var keyVersionInfo = make(map[string] float64)
 
+// rpc_client object used to talk to the server
+var rpc_client *rpc.Client
+
 // get RPC client object given an IP address
 func getRPCConnection(address string) *rpc.Client {
     if currClientInfo.Server_Id == "-1" {
@@ -40,6 +43,10 @@ func (cl *ClientListener) CreateConnection(
     currClientInfo.Server_Id = req.Id
     currClientInfo.Server_Address = req.Address
     log.Info.Printf("Client create connection to server [ID: %s, Address: %s].\n", req.Id, req.Address)
+    if rpc_client != nil {
+        rpc_client.Close()
+    }
+    rpc_client = getRPCConnection(currClientInfo.Server_Address)
     return nil
 }
 
@@ -50,6 +57,10 @@ func (cl *ClientListener) BreakConnection(
     if currClientInfo.Server_Id == req.Id {
         log.Info.Printf("Client break connection to server [ID: %s, Address: %s].\n", req.Id, req.Address)
         currClientInfo.Server_Id = "-1"
+        if rpc_client != nil {
+            rpc_client.Close()
+        }
+        rpc_client = nil
     }
     return nil
 }
@@ -58,7 +69,9 @@ func (cl *ClientListener) BreakConnection(
 // of the connected server.
 func (cl *ClientListener) PutKVClient(
     req* cc.PutKVClientRequest, reply *cc.Nothing) error {
-    rpc_client := getRPCConnection(currClientInfo.Server_Address)
+    if rpc_client == nil {
+        rpc_client = getRPCConnection(currClientInfo.Server_Address)
+    }
     if rpc_client != nil {
         var put_kv_server_req cc.PutKVServerRequest
         var put_kv_server_reply cc.PutKVServerReply
@@ -86,7 +99,9 @@ func (cl *ClientListener) PutKVClient(
 // of the connected server.
 func (cl *ClientListener) GetKVClient(
     req* cc.GetKVClientRequest, reply *cc.GetKVClientReply) error {
-    rpc_client := getRPCConnection(currClientInfo.Server_Address)
+    if rpc_client == nil {
+        rpc_client = getRPCConnection(currClientInfo.Server_Address)
+    }
     if rpc_client != nil {
         var get_kv_server_req cc.GetKVServerRequest
         var get_kv_server_reply cc.GetKVServerReply
@@ -136,6 +151,9 @@ func main() {
         Server_Id:      os.Args[3],
         Server_Address: os.Args[4],
     }
+
+    // dialing the server
+    rpc_client = getRPCConnection(currClientInfo.Server_Address)
 
     client_addr, err := net.ResolveTCPAddr("tcp",
         currClientInfo.IP_address + ":" + currClientInfo.Port_num)

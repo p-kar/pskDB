@@ -352,39 +352,73 @@ func main() {
         case "stabilize":
             log.Info.Println("Executing...", commandSplit)
 
-            var num_nodes = len(serverNodeMap)
-            var errChanMap = make(map[string] chan error)
+            stabilizeTimer := time.NewTimer(cc.SERVER_STABILIZE_TIMEOUT * time.Millisecond)
+
+            num_nodes := len(serverNodeMap)
+            acksRecv := 0
+            errChan := make(chan error)
+            replyChan := make(chan string)
             for nodeId, serverPort := range serverNodeMap {
                 go func(Id string, port int) {
                     rpc_client := getRPCConnection("localhost:" + strconv.Itoa(port))
                     if rpc_client != nil {
                         var req cc.StabilizeRequest
                         req.Rounds = num_nodes - 1 // [TODO] can optimize here
-                        var reply cc.Nothing
-                        errChanMap[Id] = make(chan error)
-                        errChanMap[Id] <- rpc_client.Call("ServerListener.Stabilize", &req, &reply)
+                        var reply cc.StabilizeReply
+                        errChan <- rpc_client.Call("ServerListener.Stabilize", &req, &reply)
+                        replyChan <- reply.Id
                     } else {
                         log.Warning.Println("getRPCConnection returned a nil value.")
                     }
                 }(nodeId, serverPort)
             }
-            // [TODO] complete stabilize
-            // wait time for stabilize to complete
-            time.Sleep(cc.SERVER_STABILIZE_TIMEOUT * time.Millisecond)
-            for nodeId, errChan := range errChanMap {
+            
+            done := false
+            for !done {
                 select {
                     case err := <- errChan:
+                        serverId := <- replyChan
+                        acksRecv++
                         if err == nil {
-                            log.Info.Printf("Server [ID : %s] has successfully stabilized.\n", nodeId)
+                            log.Info.Printf("Server [ID : %s] has successfully stabilized.\n", serverId)
                         } else {
-                            log.Warning.Printf("Server [ID : %s] stabilize call failed\n", nodeId)    
+                            log.Warning.Printf("Server [ID : %s] stabilize call failed\n", serverId)
                         }
-                    default:
-                        log.Warning.Printf("Server [ID : %s] didn't complete stabilize.\n", nodeId)
+                        if acksRecv == num_nodes {
+                            stabilizeTimer.Stop()
+                            done = true
+                        }
+                    case <-stabilizeTimer.C:
+                        log.Warning.Printf("All servers didn't complete stabilize within the given time\n")
+                        break
                 }
             }
         case "printStore":
-            log.Info.Println("TODO ", commandSplit)
+            log.Info.Println("Executing...", commandSplit)
+
+            // get server ID
+            server_id := commandSplit[1]
+            // check if client present
+            if _, ok := serverNodeMap[server_id]; ok == false {
+                log.Warning.Printf("Server [ID: %s] is not present in the cluster.\n", server_id)
+                continue
+            }
+            serverPort := serverNodeMap[server_id]
+            rpc_client := getRPCConnection("localhost:" + strconv.Itoa(serverPort))
+            if rpc_client != nil {
+                var req cc.Nothing
+                var reply cc.Nothing
+
+                err := rpc_client.Call("ServerListener.PrintStore",
+                    &req, &reply)
+
+                if err != nil {
+                    log.Warning.Printf("PrintStore request to server [ID: %s] failed [err: %s].", server_id, err)
+                }
+                rpc_client.Close()
+            } else {
+                log.Warning.Println("getRPCConnection returned a nil value.")
+            }
 
         case "put":
             log.Info.Println("Executing...", commandSplit)

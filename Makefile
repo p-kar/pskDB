@@ -1,6 +1,30 @@
-all: server client
+GOPATH=$(shell pwd)
+export GOPATH
+COLORDIR=pkg/
+
+SERVERDIR=server/
+CLIENTDIR=client/
+COMMONDIR=common/
+
+SERVERSRC=$(wildcard $(SERVERDIR)/*.go)
+CLIENTSRC=$(wildcard $(CLIENTDIR)/*.go)
+COMMONSRC=$(wildcard $(COMMONDIR)/*.go)
+
+all: color master serverNode clientNode
+
+	
+color: 
+	@if [ ! -d $(COLORDIR) ]; then \
+		go get github.com/fatih/color; \
+	fi
+
+master: master.go $(COMMONSRC)
 	go build -o master
+	
+serverNode: $(SERVERSRC) $(COMMONSRC)
 	go build -o serverNode ./server
+
+clientNode: $(CLIENTSRC) $(COMMONSRC)
 	go build -o clientNode ./client
 
 clean:
@@ -9,5 +33,7 @@ clean:
 	rm -rf clientNode
 
 cleanup:
-	-pkill clientNode
-	-pkill serverNode
+	@echo -n 'Killing stray server and client processes... '
+	@-pkill serverNode | true
+	@-pkill clientNode | true
+	@echo 'done.'

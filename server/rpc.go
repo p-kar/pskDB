@@ -5,13 +5,6 @@ import (
     cc "../common"
     "errors"
     "math"
-    // "math/rand"
-    // "net"
-    // "net/rpc"
-    // "os"
-    // "sort"
-    // "strconv"
-    // "sync"
     "time"
 )
 
@@ -30,7 +23,7 @@ func (sl *ServerListener) JoinClusterAsServer(req *JoinClusterAsServerRequest,
     defer mutex_curr_server_info.Unlock()
 
     if _, ok := serverMap[req.Id]; ok {
-        return errors.New("JoinClusterAsServer: received duplicate server ids")
+        return nil
     }
     if currServerInfo.Id == req.Id {
         return errors.New("JoinClusterAsServer: received duplicate server ids")
@@ -53,8 +46,11 @@ func (sl *ServerListener) JoinClusterAsServer(req *JoinClusterAsServerRequest,
     new_server_info.Suspicion = false
 
     for _, serv_info := range serverMap {
-        client := getRPCConnection(serv_info.Address)
-        if client == nil {
+        if serv_info.rpcClient == nil {
+            serv_info.rpcClient = getRPCConnection(serv_info.Address)
+        }
+        rpc_client := serv_info.rpcClient
+        if rpc_client == nil {
             continue
         }
         new_server_not_req := NewServerNotificationRequest{
@@ -62,9 +58,9 @@ func (sl *ServerListener) JoinClusterAsServer(req *JoinClusterAsServerRequest,
             NewServerInfo: *new_server_info,
         }
         var new_server_not_reply cc.Nothing
-        client.Go("ServerListener.NewServerNotification",
+        rpc_call := rpc_client.Go("ServerListener.NewServerNotification",
             &new_server_not_req, &new_server_not_reply, nil)
-        client.Close()
+        go AsyncCallHandler(rpc_call, serv_info.Id)
     }
     // adding the new server to the server map
     serverMap[req.Id] = new_server_info
@@ -92,6 +88,26 @@ func (sl *ServerListener) NewServerNotification(
         req.NewServerInfo.Port_num, req.Id)
     serverMap[req.NewServerInfo.Id] = NewServerInfoHeap(req.NewServerInfo)
     *reply = false
+    return nil
+}
+
+// used to get the server's ServerInfo structure
+func (sl *ServerListener) GetServerInfo(
+    req *cc.Nothing, reply *GetServerInfoReply) error {
+    mutex_curr_server_info.Lock()
+    defer mutex_curr_server_info.Unlock()
+    reply.Id = currServerInfo.Id
+    // copy structure contents
+    reply.Info.Id = currServerInfo.Id
+    reply.Info.IP_address = currServerInfo.IP_address
+    reply.Info.Address = currServerInfo.Address
+    reply.Info.Port_num = currServerInfo.Port_num
+    reply.Info.Heartbeat_seqnum = currServerInfo.Heartbeat_seqnum
+    reply.Info.Timestamp = time.Now()
+    reply.Info.Alive = currServerInfo.Alive
+    reply.Info.Suspicion = currServerInfo.Suspicion
+    reply.Info.Lamport_Timestamp = currServerInfo.Lamport_Timestamp
+    reply.Info.rpcClient = nil
     return nil
 }
 
@@ -188,9 +204,16 @@ func (sl *ServerListener) CreateConnection(
 func (sl *ServerListener) BreakConnection(
     req *cc.BreakConnectionRequest, reply *cc.Nothing) error {
     // [TODO] do we need the id?
+    mutex_server_map.Lock()
+    mutex_server_map.Unlock()
     mutex_blacklist_map.Lock()
     defer mutex_blacklist_map.Unlock()
     blacklistMap[req.Address] = true
+    // need to close the connection
+    if _, ok := serverMap[req.Id]; ok && serverMap[req.Id].rpcClient != nil{
+        serverMap[req.Id].rpcClient.Close()
+        serverMap[req.Id].rpcClient = nil
+    }
 
     log.Info.Printf("Added server [Address: %s] to blacklist.\n", req.Address)
 
@@ -199,31 +222,39 @@ func (sl *ServerListener) BreakConnection(
 
 func (sl *ServerListener) KillServerNotification(
     req *KillServerNotificationRequest, reply *cc.Nothing) error {
-    nodeId := req.Id
     *reply = false
     // acquire lock on server map
     mutex_server_map.Lock()
     defer mutex_server_map.Unlock()
     // delete nodeId from server map
-    delete(serverMap, nodeId)
-    log.Info.Printf("Received stop server notification from server [ID: %s].\n", nodeId)
+    if _, ok := serverMap[req.Id]; ok && serverMap[req.Id].rpcClient != nil{
+        serverMap[req.Id].rpcClient.Close()
+        serverMap[req.Id].rpcClient = nil
+    }
+    delete(serverMap, req.Id)
+    log.Info.Printf("Received stop server notification from server [ID: %s].\n", req.Id)
     return nil
 }
 
 func (sl *ServerListener) KillServer(
     req *cc.Nothing, reply *cc.Nothing) error {
+    mutex_server_map.Lock()
+    defer mutex_server_map.Unlock()
     *reply = false
     killserver_req := KillServerNotificationRequest{
         Id: currServerInfo.Id,
     }
     var killserver_reply cc.Nothing
     // send message to all servers that I got a kill request from the master
-    for pid := range serverMap {
-        client := getRPCConnection(serverMap[pid].Address)
-        if client != nil {
-            client.Go("ServerListener.KillServerNotification",
+    for _, serv_info := range serverMap {
+        if serv_info.rpcClient == nil {
+            serv_info.rpcClient = getRPCConnection(serv_info.Address)
+        }
+        rpc_client := serv_info.rpcClient
+        if rpc_client != nil {
+            rpc_client.Go("ServerListener.KillServerNotification",
                 &killserver_req, &killserver_reply, nil)
-            client.Close()
+            rpc_client.Close()
         }
     }
     doneHeartbeat <- true
@@ -293,7 +324,10 @@ func (sl *ServerListener) PrintMembershipList(
     req *cc.Nothing, reply *cc.Nothing) error {
     mutex_server_map.Lock()
     defer mutex_server_map.Unlock()
-    var member_list string
+    // acquire lock on currServerInfo
+    mutex_curr_server_info.Lock()
+    defer mutex_curr_server_info.Unlock()
+    member_list := "( *ID: " + currServerInfo.Id + ", Port: " + currServerInfo.Port_num + " ) "
     for id, serv_info := range serverMap {
         member_list = member_list + "( ID: " + id + ", Port: " + serv_info.Port_num + " ) "
     }
@@ -309,18 +343,24 @@ func (sl *ServerListener) PingServer(
 
 // RPC call for master to stabilize the system
 func (sl *ServerListener) Stabilize(
-    req *cc.StabilizeRequest, reply *cc.Nothing) error {
+    req *cc.StabilizeRequest, reply *cc.StabilizeReply) error {
 
     log.Info.Println("Running stabilize....")
+    reply.Id = currServerInfo.Id
+    roundTicker := time.NewTicker(STABILIZE_ROUND_INTERVAL * time.Millisecond)
+    defer roundTicker.Stop()
+    
     // perform stabilize rounds    
     for i := 1; i<=req.Rounds; i++ {
         mutex_server_map.Lock()
         for _, serv_info := range serverMap {
-            client := getRPCConnection(serv_info.Address)
-            if client == nil {
+            if serv_info.rpcClient == nil {
+                serv_info.rpcClient = getRPCConnection(serv_info.Address)
+            }
+            rpc_client := serv_info.rpcClient
+            if rpc_client == nil {
                 continue
             }
-
             // send data to other server
             // assuming Id of the server doesn't change so not using Mutex
             send_key_data_req := SendKVDataRequest{
@@ -333,17 +373,19 @@ func (sl *ServerListener) Stabilize(
             mutex_key_value_map.Unlock()
 
             var send_key_data_reply cc.Nothing
-            err := client.Call("ServerListener.SendKVData", 
+            err := rpc_client.Call("ServerListener.SendKVData", 
                 &send_key_data_req, &send_key_data_reply)
             if err != nil {
                 // [TODO] figure out what to do in this case
+                if err == ErrShutdown {
+                    serv_info.rpcClient = nil
+                }
                 continue
             }
 
         }
         mutex_server_map.Unlock()
-
-        time.Sleep(STABILIZE_ROUND_INTERVAL * time.Millisecond)
+        <-roundTicker.C
     }
     return nil
 }
@@ -364,5 +406,22 @@ func (sl *ServerListener) SendKVData(
             }
         }
     }
+    return nil
+}
+
+// RPC call to print the whole KV store in this replica
+func (sl *ServerListener) PrintStore(
+    req *cc.Nothing, reply *cc.Nothing) error {
+    mutex_curr_server_info.Lock()
+    sid := currServerInfo.Id
+    mutex_curr_server_info.Unlock()
+    mutex_key_value_map.Lock()
+    defer mutex_key_value_map.Unlock()
+    // add/update keys from received data
+    fmt.Printf("\nServer %s KV Store\n", sid)
+    for key, value := range keyValueMap {
+        fmt.Printf("%s\t:\t%s\n", key, value.Value)
+    }
+    fmt.Printf("\n")
     return nil
 }
