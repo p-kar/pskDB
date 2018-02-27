@@ -106,6 +106,15 @@ type SendKVDataRequest struct {
     ServerId string
 }
 
+type ProcessRemoteWriteRequest struct {
+    // K in the <K,V> pair
+    Key string
+    // V in the <K,V> pair
+    Value string
+    // lamport timestamp when this <K,V> pair was updated
+    Version float64
+}
+
 // declares a new KeyValueInfo object in heap and returns a pointer
 func NewKeyValueInfoHeap (info KeyValueInfo) *KeyValueInfo {
     new_key_value := new(KeyValueInfo)
