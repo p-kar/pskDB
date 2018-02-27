@@ -4,6 +4,7 @@ import (
     "fmt"
     "math"
     "time"
+    "sort"
     "errors"
     cc "../common"
 )
@@ -458,10 +459,17 @@ func (sl *ServerListener) PrintStore(
     mutex_curr_server_info.Unlock()
     mutex_key_value_map.Lock()
     defer mutex_key_value_map.Unlock()
+    store := make([]string, len(keyValueMap))
+    i := 0
     // add/update keys from received data
     fmt.Printf("\nServer %s KV Store\n", sid)
     for key, value := range keyValueMap {
-        fmt.Printf("%s\t:\t%s\n", key, value.Value)
+        store[i] = fmt.Sprintf("%s\t:\t%s", key, value.Value)
+        i++
+    }
+    sort.Strings(store)
+    for _, kv := range store {
+        fmt.Printf("%s\n", kv)
     }
     fmt.Printf("\n")
     return nil
