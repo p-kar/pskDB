@@ -2,10 +2,12 @@ package main
 
 import (
     "fmt"
-    cc "../common"
     "errors"
     "math"
     "time"
+    "sort"
+    "errors"
+    cc "../common"
 )
 
 type ServerListener int
@@ -264,6 +266,9 @@ func (sl *ServerListener) KillServer(
 // write a <K,V> pair in the key value store
 func (sl *ServerListener) PutKVServer (
     req *cc.PutKVServerRequest, reply *cc.PutKVServerReply) error {
+    // acquire lock on serverMap
+    mutex_server_map.Lock()
+    mutex_server_map.Unlock()
     // acquire lock on key value store
     mutex_key_value_map.Lock()
     defer mutex_key_value_map.Unlock()
@@ -294,6 +299,25 @@ func (sl *ServerListener) PutKVServer (
     reply.Key = keyValueMap[req.Key].Key
     reply.Value = keyValueMap[req.Key].Value
     reply.Version = keyValueMap[req.Key].Version
+    // send message to all servers that I got a put request from a client
+    for _, serv_info := range serverMap {
+        if serv_info.rpcClient == nil {
+            serv_info.rpcClient = getRPCConnection(serv_info.Address)
+        }
+        rpc_client := serv_info.rpcClient
+        if rpc_client == nil {
+            continue
+        }
+        process_remote_write_req := ProcessRemoteWriteRequest{
+            Key:        keyValueMap[req.Key].Key,
+            Value:      keyValueMap[req.Key].Value,
+            Version:    keyValueMap[req.Key].Version,
+        }
+        var process_remote_write_reply cc.Nothing
+        rpc_call := rpc_client.Go("ServerListener.ProcessRemoteWrite",
+            &process_remote_write_req, &process_remote_write_reply, nil)
+        go AsyncCallHandler(rpc_call, serv_info.Id)
+    }
     return nil
 }
 
@@ -315,6 +339,25 @@ func (sl *ServerListener) GetKVServer(
         if val.Version < req.Version {
             reply.Value = "ERR_DEP"
         }
+    }
+    return nil
+}
+
+// process a remote write to the key value store
+func (sl *ServerListener) ProcessRemoteWrite(
+    req *ProcessRemoteWriteRequest, reply *cc.Nothing) error {
+    mutex_key_value_map.Lock()
+    defer mutex_key_value_map.Unlock()
+    if _, ok := keyValueMap[req.Key]; ok == false {
+        keyValueMap[req.Key] = new(KeyValueInfo)
+        keyValueMap[req.Key].Key = req.Key
+        keyValueMap[req.Key].Value = req.Value
+        keyValueMap[req.Key].Version = req.Version
+        AddToWriteLog(keyValueMap[req.Key])
+    } else if req.Version > keyValueMap[req.Key].Version {
+        keyValueMap[req.Key].Value = req.Value
+        keyValueMap[req.Key].Version = req.Version
+        AddToWriteLog(keyValueMap[req.Key])
     }
     return nil
 }
@@ -417,10 +460,17 @@ func (sl *ServerListener) PrintStore(
     mutex_curr_server_info.Unlock()
     mutex_key_value_map.Lock()
     defer mutex_key_value_map.Unlock()
+    store := make([]string, len(keyValueMap))
+    i := 0
     // add/update keys from received data
     fmt.Printf("\nServer %s KV Store\n", sid)
     for key, value := range keyValueMap {
-        fmt.Printf("%s\t:\t%s\n", key, value.Value)
+        store[i] = fmt.Sprintf("%s\t:\t%s", key, value.Value)
+        i++
+    }
+    sort.Strings(store)
+    for _, kv := range store {
+        fmt.Printf("%s\n", kv)
     }
     fmt.Printf("\n")
     return nil
