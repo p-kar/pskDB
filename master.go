@@ -511,7 +511,7 @@ func main() {
                 rpc_client.Close()
             } else {
                 log.Warning.Println("getRPCConnection returned a nil value.")
-            }
+            }  
 
         default:
             log.Warning.Println("Command", commandSplit, "not recognized")
