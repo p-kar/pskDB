@@ -1,0 +1,53 @@
+joinServer 0
+joinServer 1
+joinServer 2
+joinServer 3
+joinServer 4
+joinClient 5 0
+joinClient 6 1
+joinClient 7 2
+joinClient 8 3
+joinClient 9 4
+put 5 a b
+Sleep
+get 8 a
+createConnection 6 2
+put 8 a c
+Sleep
+get 8 a
+createConnection 6 0
+put 6 a z
+put 9 a x
+Sleep
+breakConnection 8 3
+createConnection 8 4
+get 8 a
+breakConnection 3 1
+breakConnection 3 0
+breakConnection 3 4
+breakConnection 2 1
+breakConnection 2 4
+breakConnection 2 0
+put 7 a p
+Sleep
+put 8 a v
+Sleep
+put 7 a f
+Sleep
+put 8 a y
+Sleep
+get 5 a
+get 7 a
+get 9 a
+stabilize
+get 7 a
+get 9 a
+createConnection 3 1
+createConnection 3 0
+createConnection 3 4
+createConnection 2 1
+createConnection 2 4
+createConnection 2 0
+stabilize
+get 7 a
+done
