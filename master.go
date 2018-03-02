@@ -11,6 +11,9 @@ import (
     "time"
 )
 
+// to check ERR_KEY - (s_id, key) -> bool. 
+var errKeyCheck = make(map[string]map[string]string)
+
 // get RPC client object given an IP address
 func getRPCConnection(address string) *rpc.Client {
     client, err := rpc.Dial("tcp", address)

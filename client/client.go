@@ -90,7 +90,9 @@ func (cl *ClientListener) PutKVClient(
             } else if err != nil {
                 continue
             }
+            log.Info.Printf("put_kv_server_reply.Version = %f\n", put_kv_server_reply.Version)
             keyVersionInfo[put_kv_server_reply.Key] = put_kv_server_reply.Version
+
             return nil
         }
     }
@@ -131,6 +133,10 @@ func (cl *ClientListener) GetKVClient(
             reply.Value = get_kv_server_reply.Value
             reply.Version = get_kv_server_reply.Version
             if get_kv_server_reply.Value != "ERR_DEP" && get_kv_server_reply.Value != "ERR_KEY" {
+                log.Info.Printf("keyVersionInfo[reply.Key] = %s, get_kv_server_reply.Version = %s\n" ,keyVersionInfo[reply.Key], get_kv_server_reply.Version)
+                if keyVersionInfo[reply.Key] > get_kv_server_reply.Version {
+                    log.Warning.Printf("Violated ReadYourWrites/MonotonicReads guarantee.\n")
+                }
                 keyVersionInfo[reply.Key] = get_kv_server_reply.Version
             }
             return nil
