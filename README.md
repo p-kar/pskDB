@@ -80,3 +80,26 @@ The system provides eventual consistency along with two session guarantees - **R
 ### Stabilize Mechanism
 
 The servers are made to reach the a consistent state by invoking the `stabilize` command. This is achieved by forwarding the entire key-value store data present on each server to every other server in its partition. The forwarding is done by using a synchronous flood message passing algorithm. When the `stabilize` command is invoked, the master passes this message to every server and the servers start the flood of their key-value store data in the network. The flooding algorithm runs for (n-1) rounds, where n is the number of servers in the system. Since all the servers are expected to run on a single system and with the assumption that size of the key-value store is small, we bound the time taken by each round to `STABILIZE_ROUND_INTERVAL`. In order to reduce the message size, we can have a log of the last exchanged info between the two servers in a way similar to Bayou. Also we are sending the entire key-value store just to simplify the implementation and this can also be optimized by having a log along with the asynchronous `put` requests we already have. At the end of all the rounds, each server replies to the master that stabilize is completed. When the master receives this from every server, it declares that the stabilize is completed.
+
+### Test cases
+
+We have tested for both correctness and performance of pskDB. 
+## Correctness:
+We ensure that the following cases are covered by the key-value store :
+* Read-your-writes and monotonic reads session guarantees
+* If client is reconnected to another, and the key is not present it should get ERR_KEY. If the latter server has an older value, it returns ERR_DEP
+* Separating the servers into two partitions and checking if the guarantees in the previous point and eventual consistency, all hold in the induvidual partitions
+* Ensure that stabilize operation occurs only within the partition
+* After the partition is recovered, ensure that reads to a key after stabilize return the latest write at that server (Read-your-writes)
+
+## Performance :
+
+We build a system consisting of 5 servers and 25 clients. Then, we generate a random set of 2000 operations on the key-value store.
+
+To run the performance test, execute the following command :
+
+~~~~
+$ time ./master < Tests/test_performance.txt > output_performance.txt
+~~~~
+
+For the 20000 requests, we get an average throughput of 588.23 requests/sec
