@@ -282,18 +282,17 @@ func (sl *ServerListener) PutKVServer (
         }
         AddToWriteLog(keyValueMap[req.Key])
     } else {
+        log.Info.Printf("Got request for old key at timestamp %s", GetLamportTimestamp())
         var curr_lamport_time float64
         if req.Version == -1 {
-            curr_lamport_time = GetAndIncrementLamportTimestamp()
+            curr_lamport_time = ConditionalIncrementLamportTimestamp(keyValueMap[req.Key].Version)
         } else {
             curr_lamport_time = ConditionalIncrementLamportTimestamp(req.Version)
             
         }
-        if keyValueMap[req.Key].Version < curr_lamport_time {
-            keyValueMap[req.Key].Value = req.Value
-            keyValueMap[req.Key].Version = curr_lamport_time
-            AddToWriteLog(keyValueMap[req.Key])
-        }
+        keyValueMap[req.Key].Value = req.Value
+        keyValueMap[req.Key].Version = curr_lamport_time
+        AddToWriteLog(keyValueMap[req.Key])
     }
     reply.Key = keyValueMap[req.Key].Key
     reply.Value = keyValueMap[req.Key].Value
